@@ -12,10 +12,10 @@ class TestIncrementalProcessing(unittest.TestCase):
             reader = nsv.Reader(f)
 
             first = next(reader)
-            self.assertEqual(first, ["r1c1", "r1c2", "r1c3"])
+            self.assertEqual(first, ["a", "b", "c"])
 
             second = next(reader)
-            self.assertEqual(second, ["r2c1", "r2c2", "r2c3"])
+            self.assertEqual(second, ["d", "e", "f"])
 
             # third = next(reader)
             # self.assertEqual(third, ["last1", "last2"])
