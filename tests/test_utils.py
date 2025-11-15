@@ -29,6 +29,10 @@ SAMPLES_DATA = {
         [],
     ],
     'multiline_encoded': [["line1\nline2", "r1c2", "r1c3"], ["anotherline1\nline2\nline3", "r2c2"]],
+    'escape_edge_cases': [
+        ["\\n", "\\\n", "\\\\n"],
+        ["\\\\", "\n\n"],
+    ],
 }
 
 

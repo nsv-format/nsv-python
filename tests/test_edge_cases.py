@@ -20,6 +20,17 @@ class TestEdgeCases(unittest.TestCase):
             rows = nsv.load(f)
         self.assertEqual(SAMPLES_DATA['special_chars'], rows)
 
+    def test_trailing_backslash(self):
+        """Test handling of special characters in field values."""
+        expected = [
+            ['yo', 'shouln\'ta', 'be', 'doing', 'this'],
+            ['', 'or', '', 'should', '', 'ya'],
+        ]
+        file_path = os.path.join(SAMPLES_DIR, 'trailing_backslash.nsv')
+        with open(file_path, 'r') as f:
+            rows = nsv.load(f)
+        self.assertEqual(expected, rows)
+
     # def test_numeric_values(self):
     #     """Test handling of numeric values."""
     #     data = [

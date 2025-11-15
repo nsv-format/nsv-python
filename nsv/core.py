@@ -1,13 +1,13 @@
-from typing import Iterable
+from typing import Iterable, List
 
 from .reader import Reader
 from .writer import Writer
 
-def load(file_obj) -> list[list[str]]:
+def load(file_obj) -> List[List[str]]:
     """Load NSV data from a file-like object."""
     return list(Reader(file_obj))
 
-def loads(s: str) -> list[list[str]]:
+def loads(s: str) -> List[List[str]]:
     """Load NSV data from a string."""
     data = []
     row = []
