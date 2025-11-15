@@ -38,11 +38,20 @@ with open('output.nsv', 'w') as f:
     writer.write_row(['row2cell1', 'row2cell2', 'row2cell3'])
 ```
 
-## Running Tests
+## Development
+
+### Running Tests
+
+**Important**: Always run tests from the project root to test local code changes (not the installed package):
 
 ```bash
-cd tests
-python -m unittest
+python -m unittest discover -s tests -p 'test*.py' -v
+```
+
+Alternatively, install in editable mode:
+
+```bash
+pip install -e .
 ```
 
 Must cover
