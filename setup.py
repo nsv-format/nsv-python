@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="nsv",
-    version="0.2.0",
+    version="0.2.1",
     packages=find_packages(),
     description="Python implementation of the NSV (Newline-Separated Values) format",
     long_description=open("README.md").read(),
