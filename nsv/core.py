@@ -4,11 +4,23 @@ from .reader import Reader
 from .writer import Writer
 
 def load(file_obj) -> List[List[str]]:
-    """Load NSV data from a file-like object."""
-    return list(Reader(file_obj))
+    """
+    Load NSV data from a file-like object.
+
+    This is an exhaustive operation - reads the entire file.
+    Incomplete rows at EOF (missing final double newline) are treated
+    as valid and included in the output.
+    """
+    return loads(file_obj.read())
 
 def loads(s: str) -> List[List[str]]:
-    """Load NSV data from a string."""
+    """
+    Load NSV data from a string.
+
+    This is an exhaustive operation - parses the entire string.
+    Incomplete rows at EOF (missing final double newline) are treated
+    as valid and included in the output.
+    """
     data = []
     row = []
     start = 0
@@ -20,6 +32,15 @@ def loads(s: str) -> List[List[str]]:
                 data.append(row)
                 row = []
             start = pos + 1
+
+    # Handle any remaining content after the last newline
+    if start < len(s):
+        row.append(Reader.unescape(s[start:]))
+
+    # Exhaustive operation: include incomplete row at EOF if present
+    if row:
+        data.append(row)
+
     return data
 
 def dump(data: Iterable[Iterable[str]], file_obj):
