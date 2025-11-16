@@ -13,11 +13,9 @@ class Reader:
             if line[-1] == '\n':  # so as not to chop if missing newline at EOF
                 line = line[:-1]
             acc.append(Reader.unescape(line))  # bruh
-        # at the end of the file
-        if acc:
-            return acc
-        else:  # an empty row would self-report in the cycle body
-            raise StopIteration
+        # at the end of the file - never emit incomplete rows
+        # Incomplete rows are only emitted in exhaustive operations (loads/load)
+        raise StopIteration
 
     @staticmethod
     def unescape(s: str) -> str:

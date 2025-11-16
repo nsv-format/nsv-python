@@ -25,15 +25,15 @@ class TestStreamingReader(unittest.TestCase):
         self.assertEqual(rows, [['a', 'b'], ['c', 'd']])
 
     def test_incomplete_row_at_eof(self):
-        """Reader behavior when last row doesn't have double newline."""
+        """Reader does NOT emit incomplete rows - proper streaming behavior."""
         # First row complete, second row incomplete at EOF
         data = 'a\nb\n\nc\nd'
         reader = nsv.Reader(StringIO(data))
 
         rows = list(reader)
-        # Current behavior: Reader emits incomplete row at EOF
-        # This test documents current behavior
-        self.assertEqual(rows, [['a', 'b'], ['c', 'd']])
+        # Reader only emits complete rows (ending with double newline)
+        # Incomplete row at EOF is NOT emitted
+        self.assertEqual(rows, [['a', 'b']])
 
     def test_single_complete_row(self):
         """Single row with proper termination."""
@@ -49,8 +49,8 @@ class TestStreamingReader(unittest.TestCase):
         reader = nsv.Reader(StringIO(data))
 
         rows = list(reader)
-        # Current behavior: emits incomplete row at EOF
-        self.assertEqual(rows, [['x', 'y', 'z']])
+        # Reader does NOT emit incomplete rows - proper streaming behavior
+        self.assertEqual(rows, [])
 
     def test_empty_rows(self):
         """Reader should handle empty rows (double newlines)."""
@@ -350,23 +350,24 @@ class TestLoadsReaderParity(unittest.TestCase):
                     f"loads and Reader differ for {repr(data)}")
 
     def test_parity_incomplete_data(self):
-        """Document current behavior for incomplete data at EOF."""
+        """loads() handles incomplete rows differently than Reader."""
         test_cases = [
-            'a\nb',      # Single incomplete row
-            'a\nb\n\nc\nd',  # Last row incomplete
+            ('a\nb', [['a', 'b']], []),      # Single incomplete row
+            ('a\nb\n\nc\nd', [['a', 'b'], ['c', 'd']], [['a', 'b']]),  # Last row incomplete
         ]
 
-        for data in test_cases:
+        for data, expected_loads, expected_reader in test_cases:
             with self.subTest(data=repr(data)):
                 loads_result = nsv.loads(data)
                 reader_result = list(nsv.Reader(StringIO(data)))
 
-                # Currently these differ - this test documents that
-                # loads: ignores incomplete row
-                # Reader: includes incomplete row at EOF
-                # TODO: Decide which behavior is correct
-                self.assertNotEqual(loads_result, reader_result,
-                    f"loads and Reader unexpectedly agree for {repr(data)}")
+                # Semantic difference:
+                # loads (exhaustive): includes incomplete row at EOF
+                # Reader (streaming): never emits incomplete rows
+                self.assertEqual(loads_result, expected_loads,
+                    f"loads returned unexpected result for {repr(data)}")
+                self.assertEqual(reader_result, expected_reader,
+                    f"Reader returned unexpected result for {repr(data)}")
 
 
 class TestStreamingMemoryEfficiency(unittest.TestCase):
