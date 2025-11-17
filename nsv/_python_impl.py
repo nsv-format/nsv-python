@@ -3,8 +3,9 @@ from typing import Iterable, List
 from .reader import Reader
 from .writer import Writer
 
+
 def loads(s: str) -> List[List[str]]:
-    """Load NSV data from a string."""
+    """Load NSV data from a string (pure Python implementation)."""
     data = []
     row = []
     start = 0
@@ -27,8 +28,9 @@ def loads(s: str) -> List[List[str]]:
 
     return data
 
+
 def dumps(data: Iterable[Iterable[str]]) -> str:
-    """Write elements to an NSV string."""
+    """Write elements to an NSV string (pure Python implementation)."""
     lines = []
     for i, row in enumerate(data):
         for cell in row:

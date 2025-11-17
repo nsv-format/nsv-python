@@ -7,11 +7,13 @@ from .writer import Writer
 try:
     from nsv_rust_ext import loads, dumps
 except ImportError:
-    from ._python import loads, dumps
+    from ._python_impl import loads, dumps
+
 
 def load(file_obj) -> List[List[str]]:
     """Load NSV data from a file-like object."""
     return loads(file_obj.read())
+
 
 def dump(data: Iterable[Iterable[str]], file_obj):
     """Write elements to an NSV file."""
