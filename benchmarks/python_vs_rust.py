@@ -16,8 +16,8 @@ import random
 import string
 from typing import List, Callable, Tuple
 
-# Import pure Python implementation directly (bypass graceful fallback)
-import nsv.core as nsv_python
+# Import pure Python implementation
+import nsv._python_impl as nsv_python
 
 # Try to import Rust implementation
 try:
