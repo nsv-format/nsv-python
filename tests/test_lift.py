@@ -171,6 +171,78 @@ class TestLiftUnlift(unittest.TestCase):
         self.assertEqual(1, len(parsed))
         self.assertEqual(cells, parsed[0])
 
+    def test_repeated_lift_2d_to_1d(self):
+        """Test applying lift twice to encode a 2D array into a single string."""
+        # Start with a 2D array (matrix)
+        matrix = [
+            ["a", "b", "c"],
+            ["d", "e", "f"],
+            ["", "g", ""]
+        ]
+
+        # First lift: convert each row to a string
+        lifted_rows = [nsv.lift(row) for row in matrix]
+
+        # Second lift: convert the list of strings to a single string
+        double_lifted = nsv.lift(lifted_rows)
+
+        # Double unlift to recover
+        recovered_rows = nsv.unlift(double_lifted)
+        recovered_matrix = [nsv.unlift(row) for row in recovered_rows]
+
+        self.assertEqual(matrix, recovered_matrix)
+
+    def test_repeated_lift_3d_to_1d(self):
+        """Test applying lift multiple times to encode 3D arrays."""
+        # Start with a 3D array (list of matrices)
+        data_3d = [
+            [["a", "b"], ["c", "d"]],
+            [["e", "f"], ["g", "h"]],
+            [["i", ""], ["", "j"]],
+        ]
+
+        # Double lift for each matrix
+        data_2d = [[nsv.lift(row) for row in matrix] for matrix in data_3d]
+        data_1d = [nsv.lift(matrix) for matrix in data_2d]
+
+        # Double unlift to recover
+        recovered_2d = [nsv.unlift(lifted) for lifted in data_1d]
+        recovered_3d = [[nsv.unlift(row) for row in matrix] for matrix in recovered_2d]
+
+        self.assertEqual(data_3d, recovered_3d)
+
+    def test_repeated_lift_with_special_chars(self):
+        """Test repeated lift with cells containing newlines and backslashes."""
+        data_3d = [
+            [["line1\nline2", "path\\to\\file"], ["normal", ""]],
+            [["", "text\\nwith\\backslash"], ["a\nb\nc", "simple"]],
+        ]
+
+        # Double lift
+        data_2d = [[nsv.lift(row) for row in matrix] for matrix in data_3d]
+        data_1d = [nsv.lift(matrix) for matrix in data_2d]
+
+        # Double unlift
+        recovered_2d = [nsv.unlift(lifted) for lifted in data_1d]
+        recovered_3d = [[nsv.unlift(row) for row in matrix] for matrix in recovered_2d]
+
+        self.assertEqual(data_3d, recovered_3d)
+
+    def test_escape_growth_with_repeated_lifts(self):
+        """Verify that escapes grow but round-trip still works."""
+        original = "hello\nworld"
+
+        # Apply lift 3 times
+        current = [original]
+        for _ in range(3):
+            current = [nsv.lift(current)]
+
+        # Unlift 3 times
+        for _ in range(3):
+            current = nsv.unlift(current[0])
+
+        self.assertEqual(original, current[0])
+
 
 if __name__ == '__main__':
     unittest.main()
