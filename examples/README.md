@@ -1,39 +1,27 @@
-# Lift Operation Examples
+# 3D Array Encoding with Lift
 
-`lift: str → str` - collapses one dimension by encoding all lines as cells of a single row.
+Shows how to encode a 3D array (list of 2D matrices) using repeated lift operations.
 
-## Example 1: Basic 2D → 1D
-
-```python
-data_2d = [["a", "b"], ["c", "d"]]
-nsv_2d = nsv.dumps(data_2d)          # 2D: 2 rows
-
-lifted = nsv.lift(nsv_2d)            # 1D: 1 row, 6 cells
-# Cells: ['a', 'b', '', 'c', 'd', '']
-
-recovered = nsv.loads(nsv.unlift(lifted))  # Back to 2D
-```
-
-## Example 2: Encoding 3D Arrays
-
-A 3D array is a list of 2D matrices. We can encode it using lift:
+## Process
 
 ```python
-# 3D array: 2 matrices of 2×2
-matrix_0 = [["a", "b"], ["c", "d"]]
-matrix_1 = [["e", "f"], ["g", "h"]]
+matrices = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
 
-# Encode each matrix as NSV, then lift
-lifted_0 = nsv.lift(nsv.dumps(matrix_0))
-lifted_1 = nsv.lift(nsv.dumps(matrix_1))
+# 1. Encode each 2D matrix as NSV
+nsv_files = [nsv.dumps(m) for m in matrices]
 
-# Store both as cells in one row
-combined = nsv.dumps([[lifted_0, lifted_1]])
+# 2. Lift each (2D → 1D)  
+lifted = [nsv.lift(f) for f in nsv_files]
 
-# Decode: extract and unlift each cell
-cells = nsv.loads(combined)[0]
-recovered_0 = nsv.loads(nsv.unlift(cells[0]))
-recovered_1 = nsv.loads(nsv.unlift(cells[1]))
+# 3. Combine as 2D NSV (2 rows with 6 cells each)
+combined = nsv.dumps([nsv.loads(l)[0] for l in lifted])
+
+# 4. Lift again (2D → 1D, everything in one row)
+final = nsv.lift(combined)  # 1 row, 14 cells
+
+# Decode
+rows = nsv.loads(nsv.unlift(final))  # 2 rows
+recovered = [nsv.loads('\n'.join(row) + '\n') for row in rows]
 ```
 
-This is how ENSV metadata works: a `.nsvs` file is lifted and stored as row 0.
+Each lift collapses one dimension: 3D → 2D → 1D
