@@ -1,11 +1,17 @@
 # NSV Lift Operation Examples
 
-This directory contains concrete examples of the `lift` operation applied to NSV data, showing how data transforms at each stage.
+This directory contains concrete examples of the `lift` operation, demonstrating how it encodes a **flat sequence of lines** as a single NSV row.
 
-## 2D Example: Progressive Lifting
+## Key Concept
 
-### Stage 0: Original 2D Data
-**File:** `1_original_2d.nsv`
+**`lift`** takes a sequence of strings (e.g., all lines from an NSV file) and encodes them as cells of a single row.
+
+The inverse **`unlift`** extracts those strings back, allowing you to reconstruct the original structure.
+
+## Example 1: Lifting a 2D NSV File
+
+### Stage 0: Original 2D Data (3 rows)
+**File:** `1_original_2d.nsv` (21 bytes)
 
 ```
 a
@@ -22,49 +28,47 @@ g
 
 ```
 
-This is a standard NSV file with 3 rows:
-- Row 0: `["a", "b", "c"]`
-- Row 1: `["d", "e", "f"]`
-- Row 2: `["", "g", ""]` (note the empty cells encoded as `\`)
+This represents: `[["a", "b", "c"], ["d", "e", "f"], ["", "g", ""]]`
 
-### Stage 1: After First Lift (3 cells in 1 row)
-**File:** `2_after_first_lift.nsv`
+**Flat sequence of lines:** `['a', 'b', 'c', '', 'd', 'e', 'f', '', '\\', 'g', '\\', '']` (12 lines)
 
-```
-a\nb\nc\n\n
-d\ne\nf\n\n
-\\\ng\n\\\n\n
+Notice the empty strings (`''`) marking row boundaries, and `'\\'` representing empty cells.
+
+### Stage 1: After Lift (1 row, 1 cell)
+**File:** `2_after_lift.nsv` (49 bytes)
 
 ```
-
-Each original row has been "lifted" into a single cell:
-- Cell 0: `"a\nb\nc\n\n"` (the literal characters, not actual newlines!)
-- Cell 1: `"d\ne\nf\n\n"`
-- Cell 2: `"\\\ng\n\\\n\n"`
-
-Notice how:
-- Newlines are escaped as `\n`
-- Empty cells (`\`) are escaped as `\\\` (backslash becomes `\\`, then the `\` for empty)
-
-### Stage 2: After Second Lift (1 cell in 1 row)
-**File:** `3_after_second_lift.nsv`
-
-```
-a\\nb\\nc\\n\\n\nd\\ne\\nf\\n\\n\n\\\\\\ng\\n\\\\\\n\\n\n\n
+a\nb\nc\n\\\nd\ne\nf\n\\\n\\\\\ng\n\\\\\n\\\n\n
 
 ```
 
-The entire structure is now a single cell. Notice the **exponential escape growth**:
-- Original `\n` → `\\n` (escaped once)
-- That `\\n` → `\\\\n` (escaped again!)
-- Original `\` → `\\` → `\\\\` → `\\\\\\` (empty cell marker, double-escaped)
+The entire flat sequence is now encoded in a **single cell**. When you load this NSV file, you get:
+- 1 row with 1 cell
+- Cell contains: `"a\nb\nc\n\\\nd\ne\nf\n\\\n\\\\\ng\n\\\\\n\\\n\n"`
 
-**Character count:** 61 bytes (from original 21 bytes)
+**Key observation:**
+- Line `''` (empty) → encoded as `\\\` (backslash becomes `\\`, then `\` for empty)
+- Line `'\\'` (backslash char) → encoded as `\\\\\\` (four backslashes!)
 
-## 3D Example: Two Matrices
+### Stage 2: After Double Lift (1 row, 1 cell)
+**File:** `3_after_double_lift.nsv` (138 bytes)
 
-### Original Matrices
-**Files:** `3d_matrix_0.nsv`, `3d_matrix_1.nsv`
+```
+a\\\\nb\\\\nc\\\\n\\\\\\\\\\\\nd\\\\ne\\\\nf\\\\n\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\ng\\\\n\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\n\\\\n\n\\\n\n
+
+```
+
+We lifted the *lifted file itself*. The flat sequence from `2_after_lift.nsv` was:
+- `['a\\nb\\nc\\n...', '']` (the cell content + row terminator)
+
+Now **that** sequence is encoded as one cell with exponentially growing escapes.
+
+**Recovery:** `unlift → parse → unlift → parse` gets back the original 3 rows.
+
+## Example 2: Combining Multiple NSV Files (3D)
+
+### Original: Two 2×2 Matrices
+**Files:** `3d_matrix_0.nsv`, `3d_matrix_1.nsv` (10 bytes each)
 
 Matrix 0:
 ```
@@ -77,54 +81,56 @@ d
 ```
 Represents: `[["a", "b"], ["c", "d"]]`
 
-Matrix 1 (similar structure): `[["e", "f"], ["g", "h"]]`
+Matrix 1 (similar): `[["e", "f"], ["g", "h"]]`
 
-### After First Lift (per matrix)
-**Files:** `3d_matrix_0_lift1.nsv`, `3d_matrix_1_lift1.nsv`
+### After Lifting Each Matrix
+Each matrix file's flat sequence is lifted to create one cell:
+- Matrix 0 → cell: `"a\nb\n\\\nc\nd\n\\\n\n"`
+- Matrix 1 → cell: `"e\nf\n\\\ng\nh\n\\\n\n"`
 
-Matrix 0 after lifting each row:
-```
-a\nb\n\n
-c\nd\n\n
-
-```
-
-Now it's 2 cells in 1 row, where each cell represents a lifted row.
-
-### After Second Lift (all matrices in one row)
-**File:** `3d_all_matrices_lift2.nsv`
+### Combined File (2 cells in 1 row)
+**File:** `3d_combined.nsv` (47 bytes)
 
 ```
-a\\nb\\n\\n\nc\\nd\\n\\n\n\n
-e\\nf\\n\\n\ng\\nh\\n\\n\n\n
+a\nb\n\\\nc\nd\n\\\n\n
+e\nf\n\\\ng\nh\n\\\n\n
 
 ```
 
-Two cells, one row. Each cell is a fully lifted matrix.
+Two lifted matrices stored as two cells in one row!
 
-### After Third Lift (single cell)
-**File:** `3d_all_matrices_lift3.nsv`
-
-```
-a\\\\nb\\\\n\\\\n\\nc\\\\nd\\\\n\\\\n\\n\\n\ne\\\\nf\\\\n\\\\n\\ng\\\\nh\\\\n\\\\n\\n\\n\n\n
+### Triple Lift (1 cell)
+**File:** `3d_triple_lift.nsv` (122 bytes)
 
 ```
+a\\\\nb\\\\n\\\\\\\\\\\\nc\\\\nd\\\\n\\\\\\\\\\\\n\\\\n\ne\\\\nf\\\\n\\\\\\\\\\\\ng\\\\nh\\\\n\\\\\\\\\\\\n\\\\n\n\\\n\n
 
-The entire 3D structure encoded as **one cell in one row**.
+```
 
-**Character count:** 94 bytes (from original 10 bytes per matrix)
+The entire combined file is lifted again, encoding **both 2×2 matrices in a single cell**.
 
-## Key Observations
+**Recovery:** `unlift → parse → unlift each cell → parse each` recovers both original matrices.
 
-1. **Valid NSV at every stage**: Each intermediate file is a valid NSV document
-2. **Exponential growth**: Escapes double at each lift level
-3. **Perfect round-trip**: `unlift(unlift(...(lift(lift(...)))))` always recovers the original
-4. **Fractal structure**: The same encoding rules apply at every nesting level
+## Summary
+
+| File | Structure | Size | Escaping Level |
+|------|-----------|------|----------------|
+| `1_original_2d.nsv` | 3 rows × 3 cells | 21 B | Original |
+| `2_after_lift.nsv` | 1 row × 1 cell | 49 B | Single lift (2×) |
+| `3_after_double_lift.nsv` | 1 row × 1 cell | 138 B | Double lift (4×) |
+| `3d_combined.nsv` | 1 row × 2 cells | 47 B | Single lift |
+| `3d_triple_lift.nsv` | 1 row × 1 cell | 122 B | Triple lift |
+
+**Key Properties:**
+1. ✓ Perfect round-trip: `unlift(lift(x)) = x`
+2. ✓ Every intermediate file is valid NSV
+3. ✓ Escapes grow exponentially (but predictably)
+4. ✓ Enables arbitrary nesting depth
 
 ## Running the Demo
 
 ```bash
-PYTHONPATH=/home/user/nsv-python python examples/demonstrate_lift.py
+PYTHONPATH=. python examples/demonstrate_lift.py
 ```
 
-This will regenerate all example files and verify round-trip properties.
+This regenerates all example files and verifies round-trip properties.
