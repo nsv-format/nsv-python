@@ -2,246 +2,189 @@ import unittest
 import nsv
 
 class TestLiftUnlift(unittest.TestCase):
-    def test_basic_lift(self):
-        """Test basic lift operation with simple strings."""
-        cells = ["a", "b", "c"]
-        result = nsv.lift(cells)
-        expected = "a\nb\nc\n\n"
-        self.assertEqual(expected, result)
+    def test_basic_lift_2d_to_1d(self):
+        """Test lift collapses 2D to 1D."""
+        # 2 rows, 2 cells each
+        original = "a\nb\n\nc\nd\n\n"
+        lifted = nsv.lift(original)
 
-    def test_basic_unlift(self):
-        """Test basic unlift operation."""
-        row_str = "a\nb\nc\n\n"
-        result = nsv.unlift(row_str)
-        expected = ["a", "b", "c"]
-        self.assertEqual(expected, result)
+        # Should be 1 row with 6 cells (a, b, empty, c, d, empty)
+        parsed = nsv.loads(lifted)
+        self.assertEqual(1, len(parsed))  # One row
+        self.assertEqual(6, len(parsed[0]))  # 6 cells (including row delimiters)
+        self.assertEqual(["a", "b", "", "c", "d", ""], parsed[0])
 
-    def test_lift_with_empty_cell(self):
-        """Test lift with empty cells."""
-        cells = ["a", "b", "", "d"]
-        result = nsv.lift(cells)
-        expected = "a\nb\n\\\nd\n\n"
-        self.assertEqual(expected, result)
+    def test_basic_unlift_1d_to_2d(self):
+        """Test unlift expands 1D to 2D."""
+        # 1 row with 6 cells
+        lifted = "a\nb\n\\\nc\nd\n\\\n\n"
+        unlifted = nsv.unlift(lifted)
 
-    def test_unlift_with_empty_cell(self):
-        """Test unlift with empty cells."""
-        row_str = "a\nb\n\\\nd\n\n"
-        result = nsv.unlift(row_str)
-        expected = ["a", "b", "", "d"]
-        self.assertEqual(expected, result)
-
-    def test_lift_with_newlines(self):
-        """Test lift with cells containing newlines."""
-        cells = ["line1\nline2", "simple", "multi\nline\ntext"]
-        result = nsv.lift(cells)
-        expected = "line1\\nline2\nsimple\nmulti\\nline\\ntext\n\n"
-        self.assertEqual(expected, result)
-
-    def test_unlift_with_newlines(self):
-        """Test unlift with escaped newlines."""
-        row_str = "line1\\nline2\nsimple\nmulti\\nline\\ntext\n\n"
-        result = nsv.unlift(row_str)
-        expected = ["line1\nline2", "simple", "multi\nline\ntext"]
-        self.assertEqual(expected, result)
-
-    def test_lift_with_backslashes(self):
-        """Test lift with cells containing backslashes."""
-        cells = ["path\\to\\file", "normal", "c:\\windows"]
-        result = nsv.lift(cells)
-        expected = "path\\\\to\\\\file\nnormal\nc:\\\\windows\n\n"
-        self.assertEqual(expected, result)
-
-    def test_unlift_with_backslashes(self):
-        """Test unlift with escaped backslashes."""
-        row_str = "path\\\\to\\\\file\nnormal\nc:\\\\windows\n\n"
-        result = nsv.unlift(row_str)
-        expected = ["path\\to\\file", "normal", "c:\\windows"]
-        self.assertEqual(expected, result)
-
-    def test_lift_with_mixed_escapes(self):
-        """Test lift with both newlines and backslashes."""
-        cells = ["text\\nwith\\backslash", "normal", ""]
-        result = nsv.lift(cells)
-        expected = "text\\\\nwith\\\\backslash\nnormal\n\\\n\n"
-        self.assertEqual(expected, result)
-
-    def test_unlift_with_mixed_escapes(self):
-        """Test unlift with both types of escapes."""
-        row_str = "text\\\\nwith\\\\backslash\nnormal\n\\\n\n"
-        result = nsv.unlift(row_str)
-        expected = ["text\\nwith\\backslash", "normal", ""]
-        self.assertEqual(expected, result)
+        # Should be back to 2 rows
+        parsed = nsv.loads(unlifted)
+        self.assertEqual(2, len(parsed))
+        self.assertEqual(["a", "b"], parsed[0])
+        self.assertEqual(["c", "d"], parsed[1])
 
     def test_roundtrip_property(self):
-        """Test that unlift(lift(x)) = x for various inputs."""
+        """Test that unlift(lift(x)) = x."""
         test_cases = [
-            ["a", "b", "c"],
-            ["", "", ""],
-            ["single"],
-            [],
-            ["has\nnewline", "has\\backslash", "has\nboth\\things"],
-            ["Roses are red\nViolets are blue", "This may be pain", "But CSV would be, too"],
-            ["Tab\tseparated\tvalues"],
+            "a\nb\nc\n\nd\ne\nf\n\n",  # 2 rows
+            "single\n\n",  # 1 row, 1 cell
+            "\\\n\n",  # 1 row, 1 empty cell
+            "a\n\\\nb\n\n",  # 1 row with empty cell
         ]
 
-        for cells in test_cases:
-            with self.subTest(cells=cells):
-                lifted = nsv.lift(cells)
+        for original in test_cases:
+            with self.subTest(original=original):
+                lifted = nsv.lift(original)
                 unlifted = nsv.unlift(lifted)
-                self.assertEqual(cells, unlifted)
+                self.assertEqual(original, unlifted)
 
-    def test_empty_row(self):
-        """Test lift and unlift with empty row."""
-        cells = []
-        result = nsv.lift(cells)
-        expected = "\n"
-        self.assertEqual(expected, result)
+    def test_double_lift_2d_to_0d(self):
+        """Test double lift: 2D → 1D → more flattened."""
+        # Start with 2D
+        original = "a\nb\n\nc\nd\n\n"
 
-        # Reverse
-        unlifted = nsv.unlift(result)
-        self.assertEqual(cells, unlifted)
+        # First lift: 2D → 1D (6 cells from 6 lines)
+        once_lifted = nsv.lift(original)
+        parsed = nsv.loads(once_lifted)
+        self.assertEqual(1, len(parsed))  # One row
+        self.assertEqual(6, len(parsed[0]))  # 6 cells
 
-    def test_single_empty_cell(self):
-        """Test lift and unlift with single empty cell."""
-        cells = [""]
-        result = nsv.lift(cells)
-        expected = "\\\n\n"
-        self.assertEqual(expected, result)
+        # Second lift: takes those 7 lines (6 cells + row terminator) and makes them cells
+        twice_lifted = nsv.lift(once_lifted)
+        parsed = nsv.loads(twice_lifted)
+        self.assertEqual(1, len(parsed))  # One row
+        self.assertTrue(len(parsed[0]) > 1)  # Multiple cells, not just one
 
-        # Reverse
-        unlifted = nsv.unlift(result)
-        self.assertEqual(cells, unlifted)
+        # Double unlift to recover
+        once_unlifted = nsv.unlift(twice_lifted)
+        twice_unlifted = nsv.unlift(once_unlifted)
+        self.assertEqual(original, twice_unlifted)
 
-    def test_multiple_empty_cells(self):
-        """Test lift and unlift with multiple empty cells."""
-        cells = ["", "", ""]
-        result = nsv.lift(cells)
-        expected = "\\\n\\\n\\\n\n"
-        self.assertEqual(expected, result)
+    def test_lift_with_empty_cells(self):
+        """Test lift handles empty cells correctly."""
+        original = "\\\ng\n\\\n\n"  # One row: ["", "g", ""]
+        lifted = nsv.lift(original)
 
-        # Reverse
-        unlifted = nsv.unlift(result)
-        self.assertEqual(cells, unlifted)
-
-    def test_example_from_spec(self):
-        """Test the exact example from the specification."""
-        cells = ["a", "b", "", "d"]
-        result = nsv.lift(cells)
-        # Expected from spec: "a\nb\n\\\nd\n\n"
-        expected = "a\nb\n\\\nd\n\n"
-        self.assertEqual(expected, result)
-
-        # Verify roundtrip
-        unlifted = nsv.unlift(result)
-        self.assertEqual(cells, unlifted)
-
-    def test_complex_text(self):
-        """Test with complex real-world text."""
-        cells = [
-            "first",
-            "Roses are red\nViolets are blue\nThis may be pain\nBut CSV would be, too",
-            "Tab\tseparated\tvalues\n(would be left as-is normally)",
-            "Not a newline: \\n"
-        ]
-        lifted = nsv.lift(cells)
-        unlifted = nsv.unlift(lifted)
-        self.assertEqual(cells, unlifted)
-
-    def test_unlift_without_trailing_newline(self):
-        """Test unlift handles strings without trailing newline."""
-        row_str = "a\nb\nc\n"  # Missing the final newline
-        result = nsv.unlift(row_str)
-        expected = ["a", "b", "c"]
-        self.assertEqual(expected, result)
-
-    def test_unicode_characters(self):
-        """Test lift and unlift with unicode characters."""
-        cells = ["hello", "世界", "🌍", "café"]
-        lifted = nsv.lift(cells)
-        unlifted = nsv.unlift(lifted)
-        self.assertEqual(cells, unlifted)
-
-    def test_lift_preserves_nsv_structure(self):
-        """Verify that lift output is a valid single NSV row."""
-        cells = ["a", "b", "c"]
-        lifted = nsv.lift(cells)
-
-        # Parse it as NSV - should give us a single row
         parsed = nsv.loads(lifted)
         self.assertEqual(1, len(parsed))
-        self.assertEqual(cells, parsed[0])
+        # Should be 4 cells: "\\", "g", "\\", ""
+        self.assertEqual(["\\", "g", "\\", ""], parsed[0])
 
-    def test_repeated_lift_2d_to_1d(self):
-        """Test applying lift twice to encode a 2D array into a single string."""
-        # Start with a 2D array (matrix)
-        matrix = [
-            ["a", "b", "c"],
-            ["d", "e", "f"],
-            ["", "g", ""]
-        ]
+        # Round-trip
+        unlifted = nsv.unlift(lifted)
+        self.assertEqual(original, unlifted)
 
-        # First lift: convert each row to a string
-        lifted_rows = [nsv.lift(row) for row in matrix]
+    def test_lift_with_special_chars(self):
+        """Test lift with newlines and backslashes in cells."""
+        # Row with cells containing newlines and backslashes
+        original = nsv.dumps([["line1\nline2", "path\\to\\file"]])
 
-        # Second lift: convert the list of strings to a single string
-        double_lifted = nsv.lift(lifted_rows)
+        lifted = nsv.lift(original)
+        unlifted = nsv.unlift(lifted)
 
-        # Double unlift to recover
-        recovered_rows = nsv.unlift(double_lifted)
-        recovered_matrix = [nsv.unlift(row) for row in recovered_rows]
+        self.assertEqual(original, unlifted)
 
-        self.assertEqual(matrix, recovered_matrix)
+    def test_unlift_requires_one_row(self):
+        """Test unlift fails with multiple rows."""
+        # 2 rows
+        two_rows = "a\n\nb\n\n"
 
-    def test_repeated_lift_3d_to_1d(self):
-        """Test applying lift multiple times to encode 3D arrays."""
-        # Start with a 3D array (list of matrices)
-        data_3d = [
-            [["a", "b"], ["c", "d"]],
-            [["e", "f"], ["g", "h"]],
-            [["i", ""], ["", "j"]],
-        ]
+        with self.assertRaises(ValueError):
+            nsv.unlift(two_rows)
 
-        # Double lift for each matrix
-        data_2d = [[nsv.lift(row) for row in matrix] for matrix in data_3d]
-        data_1d = [nsv.lift(matrix) for matrix in data_2d]
+    def test_one_row_lift(self):
+        """Test lifting a 1D NSV (one row)."""
+        # 1 row, 3 cells
+        original = "a\nb\nc\n\n"
 
-        # Double unlift to recover
-        recovered_2d = [nsv.unlift(lifted) for lifted in data_1d]
-        recovered_3d = [[nsv.unlift(row) for row in matrix] for matrix in recovered_2d]
+        lifted = nsv.lift(original)
+        parsed = nsv.loads(lifted)
 
-        self.assertEqual(data_3d, recovered_3d)
+        # Should be 1 row with 4 cells (a, b, c, empty row delimiter)
+        self.assertEqual(1, len(parsed))
+        self.assertEqual(["a", "b", "c", ""], parsed[0])
 
-    def test_repeated_lift_with_special_chars(self):
-        """Test repeated lift with cells containing newlines and backslashes."""
-        data_3d = [
-            [["line1\nline2", "path\\to\\file"], ["normal", ""]],
-            [["", "text\\nwith\\backslash"], ["a\nb\nc", "simple"]],
-        ]
+        # Round-trip
+        unlifted = nsv.unlift(lifted)
+        self.assertEqual(original, unlifted)
 
-        # Double lift
-        data_2d = [[nsv.lift(row) for row in matrix] for matrix in data_3d]
-        data_1d = [nsv.lift(matrix) for matrix in data_2d]
+    def test_triple_lift(self):
+        """Test lifting three times."""
+        original = "a\nb\n\nc\nd\n\n"  # 2 rows
 
-        # Double unlift
-        recovered_2d = [nsv.unlift(lifted) for lifted in data_1d]
-        recovered_3d = [[nsv.unlift(row) for row in matrix] for matrix in recovered_2d]
+        lift1 = nsv.lift(original)  # 2D → 1D
+        lift2 = nsv.lift(lift1)     # 1D → 0D
+        lift3 = nsv.lift(lift2)     # 0D → more escaped
 
-        self.assertEqual(data_3d, recovered_3d)
+        # Triple unlift
+        unlift1 = nsv.unlift(lift3)
+        unlift2 = nsv.unlift(unlift1)
+        unlift3 = nsv.unlift(unlift2)
 
-    def test_escape_growth_with_repeated_lifts(self):
-        """Verify that escapes grow but round-trip still works."""
-        original = "hello\nworld"
+        self.assertEqual(original, unlift3)
 
-        # Apply lift 3 times
-        current = [original]
-        for _ in range(3):
-            current = [nsv.lift(current)]
+    def test_combining_multiple_files(self):
+        """Test the ENSV use case: multiple NSV files → lifted → combined."""
+        # Two separate 2D files
+        file1 = "a\nb\n\nc\nd\n\n"
+        file2 = "e\nf\n\ng\nh\n\n"
 
-        # Unlift 3 times
-        for _ in range(3):
-            current = nsv.unlift(current[0])
+        # Lift each (2D → 1D)
+        lifted1 = nsv.lift(file1)
+        lifted2 = nsv.lift(file2)
 
-        self.assertEqual(original, current[0])
+        # Parse to verify each is 1 row
+        self.assertEqual(1, len(nsv.loads(lifted1)))
+        self.assertEqual(1, len(nsv.loads(lifted2)))
+
+        # To combine them, we put both lifted NSV strings as cells in one row
+        # Each lifted string should be stored as a cell
+        combined = nsv.dumps([[lifted1, lifted2]])
+
+        # The combined file has 2 cells
+        parsed = nsv.loads(combined)
+        self.assertEqual(1, len(parsed))
+        self.assertEqual(2, len(parsed[0]))
+
+        # Each cell contains a lifted NSV string that can be unlifted
+        cell1_content = parsed[0][0]
+        cell2_content = parsed[0][1]
+
+        # Unlift each to get back the original files
+        cell1_unlifted = nsv.unlift(cell1_content)
+        cell2_unlifted = nsv.unlift(cell2_content)
+
+        self.assertEqual(file1, cell1_unlifted)
+        self.assertEqual(file2, cell2_unlifted)
+
+    def test_dimension_collapsing(self):
+        """Verify lift collapses exactly one dimension per application."""
+        # 3D: 3 rows
+        nsv_3d = "a\nb\n\nc\nd\n\ne\nf\n\n"
+        data_3d = nsv.loads(nsv_3d)
+        self.assertEqual(3, len(data_3d))  # 3 rows
+
+        # 2D: 1 row with 9 cells (from 9 lines)
+        nsv_2d = nsv.lift(nsv_3d)
+        data_2d = nsv.loads(nsv_2d)
+        self.assertEqual(1, len(data_2d))  # 1 row
+        self.assertEqual(9, len(data_2d[0]))  # 9 cells (including empty delimiters)
+
+        # 1D: lift again
+        nsv_1d = nsv.lift(nsv_2d)
+        data_1d = nsv.loads(nsv_1d)
+        self.assertEqual(1, len(data_1d))  # Still 1 row
+        self.assertEqual(10, len(data_1d[0]))  # 10 cells (9 cells + row terminator)
+
+        # Reverse
+        recovered_2d = nsv.unlift(nsv_1d)
+        self.assertEqual(nsv_2d, recovered_2d)
+
+        recovered_3d = nsv.unlift(recovered_2d)
+        self.assertEqual(nsv_3d, recovered_3d)
 
 
 if __name__ == '__main__':
