@@ -1,61 +1,35 @@
 #!/usr/bin/env python3
 import nsv
 
-# Example 1: Basic lift (2D → 1D)
-print("="*70)
-print("Example 1: Basic 2D → 1D")
-print("="*70)
+matrices = [
+    [["a", "b"], ["c", "d"]],
+    [["e", "f"], ["g", "h"]],
+]
 
-data_2d = [["a", "b"], ["c", "d"]]
-nsv_2d = nsv.dumps(data_2d)
-print(f"Original 2D: {data_2d}")
-print(f"NSV: {repr(nsv_2d)}\n")
+print("Original 3D array:")
+for i, m in enumerate(matrices):
+    print(f"  Matrix {i}: {m}")
 
-lifted = nsv.lift(nsv_2d)
-parsed = nsv.loads(lifted)
-print(f"After lift: {len(parsed)} row, {len(parsed[0])} cells")
-print(f"Cells: {parsed[0]}\n")
+# Encode each matrix as NSV
+nsv_files = [nsv.dumps(m) for m in matrices]
 
-recovered = nsv.loads(nsv.unlift(lifted))
-print(f"After unlift: {recovered}")
-print(f"✓ Round-trip: {recovered == data_2d}\n")
+# Lift each (2D → 1D)
+lifted = [nsv.lift(f) for f in nsv_files]
 
-# Example 2: 3D array (list of 2D matrices)
-print("="*70)
-print("Example 2: Encode/decode 3D array")
-print("="*70)
+# Combine as 2D NSV (2 rows, each with 6 cells)
+combined_2d = nsv.dumps([nsv.loads(l)[0] for l in lifted])
+print(f"\nCombined: {len(nsv.loads(combined_2d))} rows")
 
-# Two 2D matrices (this is our 3D array: 2 matrices of 2×2)
-matrix_0 = [["a", "b"], ["c", "d"]]
-matrix_1 = [["e", "f"], ["g", "h"]]
-data_3d = [matrix_0, matrix_1]
+# Lift again (2D → 1D)
+final = nsv.lift(combined_2d)
+print(f"Final: {len(nsv.loads(final))} row, {len(nsv.loads(final)[0])} cells\n")
 
-print(f"Original 3D array (2 matrices):")
-print(f"  Matrix 0: {matrix_0}")
-print(f"  Matrix 1: {matrix_1}\n")
+# Decode: unlift → rows → reconstruct NSV from each row → parse
+rows = nsv.loads(nsv.unlift(final))
+recovered = [nsv.loads('\n'.join(row) + '\n') for row in rows]
 
-# Encode each 2D matrix as NSV
-nsv_m0 = nsv.dumps(matrix_0)
-nsv_m1 = nsv.dumps(matrix_1)
+print("Recovered:")
+for i, m in enumerate(recovered):
+    print(f"  Matrix {i}: {m}")
 
-# Lift each matrix (2D → 1D)
-lifted_m0 = nsv.lift(nsv_m0)
-lifted_m1 = nsv.lift(nsv_m1)
-
-print(f"After lifting each matrix:")
-print(f"  Matrix 0: {len(nsv.loads(lifted_m0)[0])} cells")
-print(f"  Matrix 1: {len(nsv.loads(lifted_m1)[0])} cells\n")
-
-# Store both lifted matrices as cells in one NSV row
-combined = nsv.dumps([[lifted_m0, lifted_m1]])
-print(f"Combined NSV: 1 row, {len(nsv.loads(combined)[0])} cells\n")
-
-# Decode: extract cells and unlift each
-cells = nsv.loads(combined)[0]
-recovered_0 = nsv.loads(nsv.unlift(cells[0]))
-recovered_1 = nsv.loads(nsv.unlift(cells[1]))
-
-print(f"Recovered 3D array:")
-print(f"  Matrix 0: {recovered_0}")
-print(f"  Matrix 1: {recovered_1}")
-print(f"\n✓ Round-trip: {[recovered_0, recovered_1] == data_3d}")
+print(f"\n✓ {recovered == matrices}")
