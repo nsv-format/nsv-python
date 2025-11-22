@@ -6,30 +6,76 @@ matrices = [
     [["e", "f"], ["g", "h"]],
 ]
 
-print("Original 3D array:")
+print("="*70)
+print("3D Array Encoding")
+print("="*70)
+print("\nOriginal 3D array (2 matrices):")
 for i, m in enumerate(matrices):
-    print(f"  Matrix {i}: {m}")
+    print(f"  {m}")
 
-# Encode each matrix as NSV
-nsv_files = [nsv.dumps(m) for m in matrices]
+# Step 1: Each matrix as NSV (2D)
+print("\n" + "="*70)
+print("Step 1: Each matrix as NSV file")
+print("="*70)
 
-# Lift each (2D → 1D)
-lifted = [nsv.lift(f) for f in nsv_files]
+for i, m in enumerate(matrices):
+    nsv_str = nsv.dumps(m)
+    with open(f'examples/matrix_{i}.nsv', 'w') as f:
+        f.write(nsv_str)
+    print(f"\nmatrix_{i}.nsv ({len(nsv_str)} bytes):")
+    print(nsv_str)
 
-# Combine as 2D NSV (2 rows, each with 6 cells)
+# Step 2: Lift each matrix (2D → 1D)
+print("="*70)
+print("Step 2: Lift each matrix (2D → 1D)")
+print("="*70)
+
+lifted = []
+for i, m in enumerate(matrices):
+    nsv_str = nsv.dumps(m)
+    lifted_str = nsv.lift(nsv_str)
+    lifted.append(lifted_str)
+    with open(f'examples/matrix_{i}_lifted.nsv', 'w') as f:
+        f.write(lifted_str)
+    print(f"\nmatrix_{i}_lifted.nsv ({len(lifted_str)} bytes):")
+    print(lifted_str)
+    parsed = nsv.loads(lifted_str)
+    print(f"Structure: {len(parsed)} row, {len(parsed[0])} cells")
+
+# Step 3: Combine as 2D NSV
+print("="*70)
+print("Step 3: Combine as 2D NSV (2 rows)")
+print("="*70)
+
 combined_2d = nsv.dumps([nsv.loads(l)[0] for l in lifted])
-print(f"\nCombined: {len(nsv.loads(combined_2d))} rows")
+with open('examples/combined_2d.nsv', 'w') as f:
+    f.write(combined_2d)
 
-# Lift again (2D → 1D)
+print(f"\ncombined_2d.nsv ({len(combined_2d)} bytes):")
+print(combined_2d)
+print(f"Structure: {len(nsv.loads(combined_2d))} rows")
+
+# Step 4: Lift to 1D
+print("="*70)
+print("Step 4: Lift to 1D (everything in one row)")
+print("="*70)
+
 final = nsv.lift(combined_2d)
-print(f"Final: {len(nsv.loads(final))} row, {len(nsv.loads(final)[0])} cells\n")
+with open('examples/final_1d.nsv', 'w') as f:
+    f.write(final)
 
-# Decode: unlift → rows → reconstruct NSV from each row → parse
+print(f"\nfinal_1d.nsv ({len(final)} bytes):")
+print(final)
+parsed = nsv.loads(final)
+print(f"Structure: {len(parsed)} row, {len(parsed[0])} cells")
+
+# Decode
+print("\n" + "="*70)
+print("Decoding back to 3D")
+print("="*70)
+
 rows = nsv.loads(nsv.unlift(final))
 recovered = [nsv.loads('\n'.join(row) + '\n') for row in rows]
 
-print("Recovered:")
-for i, m in enumerate(recovered):
-    print(f"  Matrix {i}: {m}")
-
-print(f"\n✓ {recovered == matrices}")
+print(f"\nRecovered: {recovered}")
+print(f"Match: {recovered == matrices}")
