@@ -1,4 +1,4 @@
-from .core import load, loads, dump, dumps
+from .core import load, loads, dump, dumps, lift, unlift
 from .reader import Reader
 from .writer import Writer
 
