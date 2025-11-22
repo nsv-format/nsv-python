@@ -36,49 +36,43 @@ def dumps(data: Iterable[Iterable[str]]) -> str:
         lines.append('')
     return ''.join(f'{line}\n' for line in lines)
 
-def lift(cells: List[str]) -> str:
-    """Lift operation: Takes a sequence of strings and interprets them as cells of a single row.
+def lift(s: str) -> str:
+    """Lift operation: Collapses one dimension by interpreting lines as cells of a single row.
 
-    Semantics: lift: Seq[String] → Row — dimension-shifting operation that nests data one level deeper.
-    Mechanism: Encodes newlines as \\n, backslashes as \\\\, empty lines as \\
+    Takes an NSV string and encodes all its lines as cells of a single row.
+    This is a dimension-shifting operation that reduces nesting by one level.
 
-    Example:
-        ["a", "b", "", "d"] → "a\\nb\\n\\\\nd\\n\\n"
-
-    Args:
-        cells: A sequence of strings to encode as a single NSV row
-
-    Returns:
-        A string containing the NSV-encoded representation of the row
-    """
-    lines = [Writer.escape(cell) for cell in cells]
-    lines.append('')  # Empty line to mark end of row
-    return ''.join(f'{line}\n' for line in lines)
-
-def unlift(row_str: str) -> List[str]:
-    """Unlift operation: Reverses the lift operation, extracting cells from an NSV row string.
-
-    This is the inverse of lift, satisfying the property: unlift(lift(x)) = x
-
-    Args:
-        row_str: An NSV-encoded row string (as produced by lift)
-
-    Returns:
-        A list of strings representing the decoded cells
+    Semantics: NSV[n] → NSV[n-1] where dimensions collapse but data is preserved.
 
     Example:
-        "a\\nb\\n\\\\nd\\n\\n" → ["a", "b", "", "d"]
+        Input (2D, 2 rows):  "a\\nb\\n\\nc\\nd\\n\\n"
+        Output (1D, 1 row):  "a\\nb\\n\\\\\\nc\\nd\\n\\\\\\n\\n"
+
+    Args:
+        s: An NSV-encoded string
+
+    Returns:
+        An NSV string with lines encoded as a single row
     """
-    # Remove the final newline if present
-    if row_str.endswith('\n'):
-        row_str = row_str[:-1]
+    lines = s.split('\n')[:-1]
+    return dumps([lines])
 
-    # Split by newlines
-    lines = row_str.split('\n')
+def unlift(s: str) -> str:
+    """Unlift operation: Reverses lift by expanding one row into multiple lines.
 
-    # The last line should be empty (row terminator)
-    if lines and lines[-1] == '':
-        lines = lines[:-1]
+    This is the inverse of lift, satisfying: unlift(lift(x)) = x
 
-    # Unescape each line
-    return [Reader.unescape(line) for line in lines]
+    Args:
+        s: An NSV string containing exactly one row
+
+    Returns:
+        An NSV string reconstructed from the row's cells
+
+    Raises:
+        ValueError: If the input doesn't contain exactly one row
+    """
+    data = loads(s)
+    if len(data) != 1:
+        raise ValueError(f"unlift requires exactly one row, got {len(data)}")
+    lines = data[0]
+    return '\n'.join(lines) + '\n'
