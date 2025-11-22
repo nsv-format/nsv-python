@@ -1,25 +1,39 @@
-# Lift Operation
+# Lift Operation Examples
 
 `lift: str → str` - collapses one dimension by encoding all lines as cells of a single row.
 
-## Example
+## Example 1: Basic 2D → 1D
 
 ```python
-import nsv
+data_2d = [["a", "b"], ["c", "d"]]
+nsv_2d = nsv.dumps(data_2d)          # 2D: 2 rows
 
-# 2D data: 3 rows
-original = [["a", "b", "c"], ["d", "e", "f"], ["", "g", ""]]
-nsv_str = nsv.dumps(original)  # "a\nb\nc\n\nd\ne\nf\n\n\\\ng\n\\\n\n"
+lifted = nsv.lift(nsv_2d)            # 1D: 1 row, 6 cells
+# Cells: ['a', 'b', '', 'c', 'd', '']
 
-# Lift: 2D → 1D
-lifted = nsv.lift(nsv_str)     # "a\nb\nc\n\\\nd\ne\nf\n\\\n\\\\\ng\n\\\\\n\\\n\n"
-
-# Result: 1 row, 12 cells
-# ['a', 'b', 'c', '', 'd', 'e', 'f', '', '\\', 'g', '\\', '']
-
-# Unlift: 1D → 2D
-unlifted = nsv.unlift(lifted)
-recovered = nsv.loads(unlifted)  # Original 3 rows recovered
+recovered = nsv.loads(nsv.unlift(lifted))  # Back to 2D
 ```
 
-**Key:** Lines → cells, row delimiters → empty cells, `\` → literal `\\`
+## Example 2: Encoding 3D Arrays
+
+A 3D array is a list of 2D matrices. We can encode it using lift:
+
+```python
+# 3D array: 2 matrices of 2×2
+matrix_0 = [["a", "b"], ["c", "d"]]
+matrix_1 = [["e", "f"], ["g", "h"]]
+
+# Encode each matrix as NSV, then lift
+lifted_0 = nsv.lift(nsv.dumps(matrix_0))
+lifted_1 = nsv.lift(nsv.dumps(matrix_1))
+
+# Store both as cells in one row
+combined = nsv.dumps([[lifted_0, lifted_1]])
+
+# Decode: extract and unlift each cell
+cells = nsv.loads(combined)[0]
+recovered_0 = nsv.loads(nsv.unlift(cells[0]))
+recovered_1 = nsv.loads(nsv.unlift(cells[1]))
+```
+
+This is how ENSV metadata works: a `.nsvs` file is lifted and stored as row 0.
