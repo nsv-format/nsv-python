@@ -36,18 +36,13 @@ def dumps(data: Iterable[Iterable[str]]) -> str:
         lines.append('')
     return ''.join(f'{line}\n' for line in lines)
 
-def lift(s: str) -> str:
-    """Encodes NSV lines as cells of a single row (dimension collapse)."""
-    lines = s.split('\n')[:-1]
-    if lines and lines[-1] == '':
-        lines = lines[:-1]
-    return dumps([lines])
+def lift(seq: List[str]) -> str:
+    """Encodes a sequence of strings as a single NSV row."""
+    return dumps([seq])
 
-def unlift(s: str) -> str:
-    """Inverse of lift. Requires exactly one row."""
+def unlift(s: str) -> List[str]:
+    """Decodes a single NSV row to a sequence of strings."""
     data = loads(s)
     if len(data) != 1:
         raise ValueError(f"unlift requires exactly one row, got {len(data)}")
-    lines = data[0]
-    lines.append('')
-    return '\n'.join(lines) + '\n'
+    return data[0]
