@@ -75,7 +75,7 @@ print("Decoding back to 3D")
 print("="*70)
 
 rows = nsv.loads(nsv.unlift(final))
-recovered = [nsv.loads('\n'.join(row) + '\n') for row in rows]
+recovered = [nsv.loads('\n'.join(row) + '\n\n') for row in rows]  # Need row terminator
 
 print(f"\nRecovered: {recovered}")
 print(f"Match: {recovered == matrices}")

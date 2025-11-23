@@ -46,7 +46,7 @@ def lift(s: str) -> str:
 
     Example:
         Input (2D, 2 rows):  "a\\nb\\n\\nc\\nd\\n\\n"
-        Output (1D, 1 row):  "a\\nb\\n\\\\\\nc\\nd\\n\\\\\\n\\n"
+        Output (1D, 1 row):  "a\\nb\\n\\\\\\nc\\nd\\n\\n"
 
     Args:
         s: An NSV-encoded string
@@ -55,6 +55,8 @@ def lift(s: str) -> str:
         An NSV string with lines encoded as a single row
     """
     lines = s.split('\n')[:-1]
+    if lines and lines[-1] == '':  # Strip final row terminator (structural, not content)
+        lines = lines[:-1]
     return dumps([lines])
 
 def unlift(s: str) -> str:
@@ -75,4 +77,5 @@ def unlift(s: str) -> str:
     if len(data) != 1:
         raise ValueError(f"unlift requires exactly one row, got {len(data)}")
     lines = data[0]
+    lines.append('')  # Restore the row terminator
     return '\n'.join(lines) + '\n'
