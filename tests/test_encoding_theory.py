@@ -107,38 +107,26 @@ class TestEncodingTheory(unittest.TestCase):
         self.assertEqual(result, [["a", ""], ["", "d"]])
 
     def test_theorem_1_lift_equals_encode_1(self):
-        """Theorem 1: lift = encode[1]
-
-        lift treats NSV lines (already escaped) as raw data and re-encodes them.
-        So lift(nsv) = encode_1(lines) where lines are the RAW line strings from nsv.
-        """
+        """Theorem 1: lift = encode[1]"""
         def encode_0(s): return escape(s)
 
         def encode_1(seq):
             return "".join(encode_0(cell) + "\n" for cell in seq) + "\n"
 
-        # Test: lift treats NSV lines as data
-        # If we have NSV "a\n\\\nc\n\n" (representing ["a", "", "c"])
-        # The raw lines are ["a", "\\", "c"]
-        # lift re-encapes these: ["a", "\\", "c"] -> "a\n\\\\\nc\n\n"
+        # Test with raw string sequences
+        test_cases = [
+            ["a", "b", "c"],
+            ["hello", "", "world"],
+            ["\\", "\n", "text"],
+            [],
+        ]
 
-        nsv_input = "a\n\\\nc\n\n"
-        # Raw lines (not unescaped, just split):
-        raw_lines = nsv_input.split("\n")[:-1]  # ['a', '\\', 'c', '']
-        if raw_lines and raw_lines[-1] == '':
-            raw_lines = raw_lines[:-1]  # ['a', '\\', 'c']
-
-        lifted = lift(nsv_input)
-        expected = encode_1(raw_lines)
-
-        self.assertEqual(lifted, expected)
+        for seq in test_cases:
+            with self.subTest(seq=seq):
+                self.assertEqual(lift(seq), encode_1(seq))
 
     def test_theorem_2_unlift_equals_decode_1(self):
-        """Theorem 2: unlift ∘ encode_1 = join_lines
-
-        unlift decodes a single-row NSV and outputs the raw lines joined.
-        This is the inverse of lift which encoded raw lines as cells.
-        """
+        """Theorem 2: unlift = decode[1]"""
         def decode_0(s): return unescape(s)
 
         def decode_1(text):
@@ -149,25 +137,21 @@ class TestEncodingTheory(unittest.TestCase):
                 cells.append(decode_0(line))
             return cells
 
-        # Test: if we encode ["a", "\\", "c"] at depth 1, we get "a\n\\\\\nc\n\n"
-        # unlift should decode this and output the raw lines: "a\n\\\nc\n\n"
+        # Test with NSV-encoded rows
+        test_cases = [
+            ("a\nb\nc\n\n", ["a", "b", "c"]),
+            ("a\n\\\nc\n\n", ["a", "", "c"]),
+            ("a\n\\\\\n\\n\n\n", ["a", "\\", "\n"]),
+            ("\n", []),
+        ]
 
-        encoded = "a\n\\\\\nc\n\n"  # This is encode_1(["a", "\\", "c"])
-        unlifted = unlift(encoded)  # Should give us the raw lines back
-
-        # The cells were ["a", "\\", "c"]
-        # When joined as lines, we get "a\n\\\nc\n\n"
-        expected_cells = decode_1(encoded)  # ["a", "\\", "c"]
-        expected_output = "\n".join(expected_cells) + "\n\n"
-
-        self.assertEqual(unlifted, expected_output)
+        for text, expected in test_cases:
+            with self.subTest(text=text):
+                self.assertEqual(unlift(text), decode_1(text))
+                self.assertEqual(unlift(text), expected)
 
     def test_theorem_3_dumps_via_lift(self):
-        """Theorem 3: dumps = concat ∘ (map encode[1])
-
-        This shows that encoding at depth 2 is the same as encoding each row at depth 1
-        and concatenating the results.
-        """
+        """Theorem 3: dumps = concat ∘ (map encode[1])"""
         def encode_0(s): return escape(s)
 
         def encode_1(seq):
@@ -187,11 +171,8 @@ class TestEncodingTheory(unittest.TestCase):
         ]
 
         for seqseq in test_cases:
-            direct = dumps(seqseq)
-            via_encode_1 = dumps_via_encode_1(seqseq)
-
-            self.assertEqual(direct, via_encode_1,
-                           f"dumps != dumps_via_encode_1 for {seqseq}")
+            with self.subTest(seqseq=seqseq):
+                self.assertEqual(dumps(seqseq), dumps_via_encode_1(seqseq))
 
     def test_theorem_4_encode_composition(self):
         """Theorem 4: encode[n+1] = concat ∘ (map encode[n])"""
@@ -214,11 +195,23 @@ class TestEncodingTheory(unittest.TestCase):
         ]
 
         for seqseq in test_cases:
-            direct = encode_2_direct(seqseq)
-            via_dumps = encode_2_via_dumps(seqseq)
+            with self.subTest(seqseq=seqseq):
+                self.assertEqual(encode_2_direct(seqseq), encode_2_via_dumps(seqseq))
 
-            self.assertEqual(direct, via_dumps,
-                           f"encode_2 composition failed for {seqseq}")
+    def test_theorem_5_dumps_equals_concat_map_lift(self):
+        """Theorem 5: dumps(rows) = concat(map(lift, rows))"""
+        test_cases = [
+            [["a", "b"], ["c", "d"]],
+            [["x"], ["y", "z"]],
+            [["", "a"], ["b", ""]],
+            [[]],
+        ]
+
+        for rows in test_cases:
+            with self.subTest(rows=rows):
+                dumps_result = dumps(rows)
+                manual_result = "".join(lift(row) for row in rows)
+                self.assertEqual(dumps_result, manual_result)
 
     def test_roundtrip_at_all_levels(self):
         """Test decode ∘ encode = id at all levels."""
@@ -253,45 +246,38 @@ class TestEncodingTheory(unittest.TestCase):
         # Start with 2D data
         data_2d = [["a", "b"], ["c", "d"]]
 
-        # Encode to 2D NSV string
+        # Encode to 2D NSV
         nsv_2d = dumps(data_2d)
 
-        # Lift to 1D (single row)
-        nsv_1d = lift(nsv_2d)
+        # We can't lift the NSV directly anymore - we need to think of it as data
+        # Actually, to lift a 2D NSV, we'd treat it as a sequence of strings
 
-        # Should be single row
-        rows = loads(nsv_1d)
-        self.assertEqual(len(rows), 1)
+        # Let's test a different composition: lift individual rows
+        lifted_rows = [lift(row) for row in data_2d]
 
-        # Unlift back to 2D
-        nsv_2d_restored = unlift(nsv_1d)
+        # Each lifted row is a single-row NSV
+        for lifted in lifted_rows:
+            rows = loads(lifted)
+            self.assertEqual(len(rows), 1)
 
-        # Should match original
-        self.assertEqual(nsv_2d_restored, nsv_2d)
-
-        # Decode back to data
-        data_2d_restored = loads(nsv_2d_restored)
-        self.assertEqual(data_2d_restored, data_2d)
+        # Unlift to recover original rows
+        recovered_rows = [unlift(lifted) for lifted in lifted_rows]
+        self.assertEqual(recovered_rows, data_2d)
 
     def test_lift_as_quoting(self):
-        """Test that lift 'quotes' structure by treating it as data."""
-        # Start with data ["a", "\\", "c"] (where \\ is a backslash)
-        data_1d = ["a", "\\", "c"]
+        """Test that lift 'quotes' file lines as NSV cells."""
+        # Simulated metadata file content (as lines)
+        metadata_lines = ["v 1", "bool true false", "", "columns id name"]
 
-        # Encode at depth 1: this creates NSV with escaped backslash
-        nsv_1d = "a\n\\\\\nc\n\n"  # \\ becomes \\\\
-        self.assertEqual(nsv_1d, dumps([data_1d]))
+        # Lift these lines into a single NSV row
+        lifted = lift(metadata_lines)
 
-        # Now lift this: treats the NSV lines as raw data
-        nsv_lifted = lift(nsv_1d)
+        # Should be encoded as cells
+        expected = "v 1\nbool true false\n\\\ncolumns id name\n\n"
+        self.assertEqual(lifted, expected)
 
-        # The lines were ["a", "\\\\", "c"] (raw, including the escaping)
-        # After lift, these become cells, so \\\\ gets escaped to \\\\\\\\
-        expected = "a\n\\\\\\\\\nc\n\n"
-        self.assertEqual(nsv_lifted, expected)
-
-        # Verify round-trip
-        self.assertEqual(unlift(nsv_lifted), nsv_1d)
+        # Unlift should recover the original lines
+        self.assertEqual(unlift(lifted), metadata_lines)
 
 
 if __name__ == "__main__":
