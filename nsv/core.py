@@ -37,45 +37,17 @@ def dumps(data: Iterable[Iterable[str]]) -> str:
     return ''.join(f'{line}\n' for line in lines)
 
 def lift(s: str) -> str:
-    """Lift operation: Collapses one dimension by interpreting lines as cells of a single row.
-
-    Takes an NSV string and encodes all its lines as cells of a single row.
-    This is a dimension-shifting operation that reduces nesting by one level.
-
-    Semantics: NSV[n] → NSV[n-1] where dimensions collapse but data is preserved.
-
-    Example:
-        Input (2D, 2 rows):  "a\\nb\\n\\nc\\nd\\n\\n"
-        Output (1D, 1 row):  "a\\nb\\n\\\\\\nc\\nd\\n\\n"
-
-    Args:
-        s: An NSV-encoded string
-
-    Returns:
-        An NSV string with lines encoded as a single row
-    """
+    """Encodes NSV lines as cells of a single row (dimension collapse)."""
     lines = s.split('\n')[:-1]
-    if lines and lines[-1] == '':  # Strip final row terminator (structural, not content)
+    if lines and lines[-1] == '':
         lines = lines[:-1]
     return dumps([lines])
 
 def unlift(s: str) -> str:
-    """Unlift operation: Reverses lift by expanding one row into multiple lines.
-
-    This is the inverse of lift, satisfying: unlift(lift(x)) = x
-
-    Args:
-        s: An NSV string containing exactly one row
-
-    Returns:
-        An NSV string reconstructed from the row's cells
-
-    Raises:
-        ValueError: If the input doesn't contain exactly one row
-    """
+    """Inverse of lift. Requires exactly one row."""
     data = loads(s)
     if len(data) != 1:
         raise ValueError(f"unlift requires exactly one row, got {len(data)}")
     lines = data[0]
-    lines.append('')  # Restore the row terminator
+    lines.append('')
     return '\n'.join(lines) + '\n'
