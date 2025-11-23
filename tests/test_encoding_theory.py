@@ -89,9 +89,11 @@ class TestEncodingTheory(unittest.TestCase):
         def decode_2(text):
             rows = []
             current = []
-            for line in text.split("\n"):
+            lines = text.split("\n")
+            for i, line in enumerate(lines):
                 if line == "":
-                    if current:
+                    # Append row unless we're on the very last line with empty current
+                    if current or i < len(lines) - 1:
                         rows.append([decode_0(cell) for cell in current])
                         current = []
                 else:
@@ -105,6 +107,10 @@ class TestEncodingTheory(unittest.TestCase):
         # Test with empty cells
         result = decode_2("a\n\\\n\n\\\nd\n\n")
         self.assertEqual(result, [["a", ""], ["", "d"]])
+
+        # Test with empty row
+        result = decode_2("\na\n\n")
+        self.assertEqual(result, [[], ["a"]])
 
     def test_theorem_1_lift_equals_encode_1(self):
         """Theorem 1: lift = encode[1]"""
@@ -241,28 +247,18 @@ class TestEncodingTheory(unittest.TestCase):
         for seqseq in [[["a", "b"], ["c", "d"]], [[""]], [["\\", "\n"]]]:
             self.assertEqual(loads(dumps(seqseq)), seqseq)
 
-    def test_lift_unlift_composition(self):
-        """Test that lift/unlift compose correctly with dumps/loads."""
-        # Start with 2D data
-        data_2d = [["a", "b"], ["c", "d"]]
+    def test_lift_unlift_inverse(self):
+        """Test that lift and unlift are inverses."""
+        test_cases = [
+            ["a", "b", "c"],
+            [""],
+            [],
+            ["v 1", "bool true false", "", "columns id name"],
+        ]
 
-        # Encode to 2D NSV
-        nsv_2d = dumps(data_2d)
-
-        # We can't lift the NSV directly anymore - we need to think of it as data
-        # Actually, to lift a 2D NSV, we'd treat it as a sequence of strings
-
-        # Let's test a different composition: lift individual rows
-        lifted_rows = [lift(row) for row in data_2d]
-
-        # Each lifted row is a single-row NSV
-        for lifted in lifted_rows:
-            rows = loads(lifted)
-            self.assertEqual(len(rows), 1)
-
-        # Unlift to recover original rows
-        recovered_rows = [unlift(lifted) for lifted in lifted_rows]
-        self.assertEqual(recovered_rows, data_2d)
+        for seq in test_cases:
+            with self.subTest(seq=seq):
+                self.assertEqual(unlift(lift(seq)), seq)
 
     def test_lift_as_quoting(self):
         """Test that lift 'quotes' file lines as NSV cells."""
@@ -278,6 +274,26 @@ class TestEncodingTheory(unittest.TestCase):
 
         # Unlift should recover the original lines
         self.assertEqual(unlift(lifted), metadata_lines)
+
+    def test_ensv_metadata_lifting(self):
+        """Test lift for combining metadata + data into ENSV."""
+        # Metadata as lines
+        metadata = ["v 1", "columns id name", "types int str"]
+
+        # Data as 2D
+        data = [["1", "Alice"], ["2", "Bob"]]
+
+        # Combine: lift(metadata) + dumps(data)
+        ensv = lift(metadata) + dumps(data)
+
+        # Parse back
+        all_rows = loads(ensv)
+
+        # First row is lifted metadata
+        self.assertEqual(all_rows[0], metadata)
+
+        # Rest is data
+        self.assertEqual(all_rows[1:], data)
 
 
 if __name__ == "__main__":
