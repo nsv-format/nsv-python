@@ -8,16 +8,16 @@ class TestLiftUnlift(unittest.TestCase):
         original = "a\nb\n\nc\nd\n\n"
         lifted = nsv.lift(original)
 
-        # Should be 1 row with 6 cells (a, b, empty, c, d, empty)
+        # Should be 1 row with 5 cells (terminator stripped)
         parsed = nsv.loads(lifted)
         self.assertEqual(1, len(parsed))  # One row
-        self.assertEqual(6, len(parsed[0]))  # 6 cells (including row delimiters)
-        self.assertEqual(["a", "b", "", "c", "d", ""], parsed[0])
+        self.assertEqual(5, len(parsed[0]))  # 5 cells (no trailing terminator)
+        self.assertEqual(["a", "b", "", "c", "d"], parsed[0])
 
     def test_basic_unlift_1d_to_2d(self):
         """Test unlift expands 1D to 2D."""
-        # 1 row with 6 cells
-        lifted = "a\nb\n\\\nc\nd\n\\\n\n"
+        # 1 row with 5 cells (produced by lift, no trailing terminator)
+        lifted = "a\nb\n\\\nc\nd\n\n"
         unlifted = nsv.unlift(lifted)
 
         # Should be back to 2 rows
@@ -42,21 +42,21 @@ class TestLiftUnlift(unittest.TestCase):
                 self.assertEqual(original, unlifted)
 
     def test_double_lift_2d_to_0d(self):
-        """Test double lift: 2D → 1D → more flattened."""
+        """Test double lift: 2D → 1D → repeated lift."""
         # Start with 2D
         original = "a\nb\n\nc\nd\n\n"
 
-        # First lift: 2D → 1D (6 cells from 6 lines)
+        # First lift: 2D → 1D (5 cells, terminator stripped)
         once_lifted = nsv.lift(original)
         parsed = nsv.loads(once_lifted)
         self.assertEqual(1, len(parsed))  # One row
-        self.assertEqual(6, len(parsed[0]))  # 6 cells
+        self.assertEqual(5, len(parsed[0]))  # 5 cells (no cascade)
 
-        # Second lift: takes those 7 lines (6 cells + row terminator) and makes them cells
+        # Second lift: same 5 cells (no growth from terminator)
         twice_lifted = nsv.lift(once_lifted)
         parsed = nsv.loads(twice_lifted)
         self.assertEqual(1, len(parsed))  # One row
-        self.assertTrue(len(parsed[0]) > 1)  # Multiple cells, not just one
+        self.assertEqual(5, len(parsed[0]))  # Still 5 cells (no cascade!)
 
         # Double unlift to recover
         once_unlifted = nsv.unlift(twice_lifted)
@@ -70,8 +70,8 @@ class TestLiftUnlift(unittest.TestCase):
 
         parsed = nsv.loads(lifted)
         self.assertEqual(1, len(parsed))
-        # Should be 4 cells: "\\", "g", "\\", ""
-        self.assertEqual(["\\", "g", "\\", ""], parsed[0])
+        # Should be 3 cells: "\\", "g", "\\" (terminator stripped)
+        self.assertEqual(["\\", "g", "\\"], parsed[0])
 
         # Round-trip
         unlifted = nsv.unlift(lifted)
@@ -103,9 +103,9 @@ class TestLiftUnlift(unittest.TestCase):
         lifted = nsv.lift(original)
         parsed = nsv.loads(lifted)
 
-        # Should be 1 row with 4 cells (a, b, c, empty row delimiter)
+        # Should be 1 row with 3 cells (terminator stripped)
         self.assertEqual(1, len(parsed))
-        self.assertEqual(["a", "b", "c", ""], parsed[0])
+        self.assertEqual(["a", "b", "c"], parsed[0])
 
         # Round-trip
         unlifted = nsv.unlift(lifted)
@@ -167,17 +167,17 @@ class TestLiftUnlift(unittest.TestCase):
         data_3d = nsv.loads(nsv_3d)
         self.assertEqual(3, len(data_3d))  # 3 rows
 
-        # 2D: 1 row with 9 cells (from 9 lines)
+        # 2D: 1 row with 8 cells (terminator stripped)
         nsv_2d = nsv.lift(nsv_3d)
         data_2d = nsv.loads(nsv_2d)
         self.assertEqual(1, len(data_2d))  # 1 row
-        self.assertEqual(9, len(data_2d[0]))  # 9 cells (including empty delimiters)
+        self.assertEqual(8, len(data_2d[0]))  # 8 cells (no trailing terminator)
 
-        # 1D: lift again
+        # 1D: lift again - same cell count (no cascade!)
         nsv_1d = nsv.lift(nsv_2d)
         data_1d = nsv.loads(nsv_1d)
         self.assertEqual(1, len(data_1d))  # Still 1 row
-        self.assertEqual(10, len(data_1d[0]))  # 10 cells (9 cells + row terminator)
+        self.assertEqual(8, len(data_1d[0]))  # Still 8 cells (no growth)
 
         # Reverse
         recovered_2d = nsv.unlift(nsv_1d)
