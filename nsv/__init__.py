@@ -2,7 +2,7 @@ from .core import load, loads, dump, dumps
 from .reader import Reader
 from .writer import Writer
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 FEATURES = {}
 
