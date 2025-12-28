@@ -48,3 +48,13 @@ def unspill(seq: Iterable[T], marker: T) -> List[List[T]]:
             row = []
     # Strict: don't append incomplete rows
     return seqseq
+
+
+def lift(seqseq: List[List[str]]) -> List[str]:
+    """Encodes seqseq at depth 1: spill[String, ''] ∘ escape_seqseq"""
+    return spill(escape_seqseq(seqseq), '')
+
+
+def unlift(seq: List[str]) -> List[List[str]]:
+    """Decodes seq at depth 1: unescape_seqseq ∘ unspill[String, '']"""
+    return unescape_seqseq(unspill(seq, ''))

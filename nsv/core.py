@@ -2,7 +2,6 @@ from typing import Iterable, List
 
 from .reader import Reader
 from .writer import Writer
-from .util import spill, unspill, escape_seqseq, unescape_seqseq
 
 def load(file_obj) -> List[List[str]]:
     """Load NSV data from a file-like object."""
@@ -36,11 +35,3 @@ def dumps(data: Iterable[Iterable[str]]) -> str:
             lines.append(Writer.escape(cell))
         lines.append('')
     return ''.join(f'{line}\n' for line in lines)
-
-def lift(seqseq: List[List[str]]) -> List[str]:
-    """Encodes seqseq at depth 1: spill[String, ''] ∘ escape_seqseq"""
-    return spill(escape_seqseq(seqseq), '')
-
-def unlift(seq: List[str]) -> List[List[str]]:
-    """Decodes seq at depth 1: unescape_seqseq ∘ unspill[String, '']"""
-    return unescape_seqseq(unspill(seq, ''))
