@@ -25,20 +25,18 @@ pip install -e .
 ```python
 import nsv
 
-# Reading NSV data
 with open('input.nsv', 'r') as f:
+    # load/dump are non-resumable
     reader = nsv.load(f)
     for row in reader:
         print(row)
 
-# Writing NSV data
 with open('output.nsv', 'w') as f:
+    # Reader/Writer are resumable, intended for streaming
     writer = nsv.Writer(f)
     writer.write_row(['row1cell1', 'row1cell2', 'row1cell3'])
     writer.write_row(['row2cell1', 'row2cell2', 'row2cell3'])
 ```
-
-## Development
 
 ### Running Tests
 
@@ -54,12 +52,10 @@ Alternatively, install in editable mode:
 pip install -e .
 ```
 
-Must cover
-- `loads(s)` vs `load(StringIO(s))` parity
-- `dumps(data)` vs `dump(data, StringIO()).getvalue()` parity
-
 ## Features
 
 - [x] Core parsing
-- [ ] `table`
+- [x] Resumable consumption
+- [x] `spill`/`unspill` operations
+- [ ] Integrate `nsv-rust` to performance
 
