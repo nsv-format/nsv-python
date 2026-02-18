@@ -13,17 +13,26 @@ def patch_pandas():
         return
     pd = sys.modules['pandas']
 
-    def read_nsv(filepath_or_buffer, **kwargs):
+    def read_nsv(filepath_or_buffer, dtype=None, **kwargs):
         if isinstance(filepath_or_buffer, str):
             with open(filepath_or_buffer, 'r') as f:
                 data = load(f)
         else:
             data = load(filepath_or_buffer)
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        if dtype is not None:
+            df = df.astype(dtype)
+        else:
+            for col in df.columns:
+                converted = pd.to_numeric(df[col], errors='coerce')
+                # Keep only if no non-empty values were coerced to NaN
+                lost = converted.isna() & (df[col] != '') & df[col].notna()
+                if not lost.any():
+                    df[col] = converted
+        return df
 
     def to_nsv(self, path_or_buf=None, **kwargs):
-        # TODO: this is naive, pandas can have non-string values
-        data = self.values
+        data = [['' if pd.isna(v) else str(v) for v in row] for row in self.values]
 
         if path_or_buf is None:
             return dumps(data)
