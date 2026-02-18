@@ -4,7 +4,7 @@ use pyo3::types::PyList;
 /// Parse NSV string into a list of lists
 #[pyfunction]
 fn loads(py: Python, s: &str) -> PyResult<PyObject> {
-    let data = nsv::loads(s);
+    let data = nsv::decode(s);
 
     // Convert Vec<Vec<String>> to Python list of lists
     let result = PyList::empty(py);
@@ -22,7 +22,7 @@ fn loads(py: Python, s: &str) -> PyResult<PyObject> {
 /// Serialize data to NSV string
 #[pyfunction]
 fn dumps(data: Vec<Vec<String>>) -> PyResult<String> {
-    Ok(nsv::dumps(&data))
+    Ok(nsv::encode(&data))
 }
 
 /// A Python module implemented in Rust.

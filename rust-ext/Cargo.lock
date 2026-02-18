@@ -98,9 +98,9 @@ dependencies = [
 
 [[package]]
 name = "nsv"
-version = "0.0.3"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93c04555e996050373acd4c5b8a4e4693a9938793aff0a5d9e1f6257dae4e39b"
+checksum = "e06c3ea6bd000528b0fd5bc193032918c70779aac13bdacd07f7e550512dee4a"
 dependencies = [
  "memchr",
  "rayon",
