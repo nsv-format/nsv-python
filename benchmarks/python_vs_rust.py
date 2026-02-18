@@ -117,8 +117,8 @@ def generate_realistic_table(rows: int) -> List[List[str]]:
 
 def benchmark_function(
     name: str,
-    func: Callable[[str], List[List[str]]],
-    data_str: str,
+    func,
+    data,
     iterations: int = 5
 ) -> Tuple[float, float]:
     """
@@ -126,8 +126,8 @@ def benchmark_function(
 
     Args:
         name: Name of the benchmark
-        func: Function to benchmark (takes string, returns parsed data)
-        data_str: Input string
+        func: Function to benchmark
+        data: Input data passed to func
         iterations: Number of iterations
 
     Returns:
@@ -136,7 +136,7 @@ def benchmark_function(
     times = []
     for _ in range(iterations):
         start = time.perf_counter()
-        result = func(data_str)
+        result = func(data)
         end = time.perf_counter()
         times.append(end - start)
 
@@ -199,37 +199,51 @@ def run_benchmark_suite():
         print(f"Benchmarking: {test_name} ({rows} rows x {cols if cols > 1 else 'varied'} cols)")
 
         # Generate test data
-        if cols == 1:  # Special case for realistic table
-            data = generator(rows, cols)
-        else:
-            data = generator(rows, cols)
+        data = generator(rows, cols)
 
-        # Encode to NSV string
+        # Encode to NSV string and bytes
         nsv_str = nsv_python.dumps(data)
+        nsv_bytes = nsv_str.encode()
+        data_bytes = [[cell.encode() for cell in row] for row in data]
         data_size_mb = len(nsv_str) / (1024 * 1024)
 
         print(f"  Data size: {len(nsv_str):,} bytes ({data_size_mb:.2f} MB)")
 
-        # Benchmark Python loads
+        # ── loads ──────────────────────────────────────────────────────────
         py_mean, py_std = benchmark_function("Python loads", nsv_python.loads, nsv_str)
-        print(f"  Python loads:  {format_time(py_mean)} ± {format_time(py_std)}")
-
-        # Benchmark Rust loads
         rust_mean, rust_std = benchmark_function("Rust loads", nsv_rust.loads, nsv_str)
-        print(f"  Rust loads:    {format_time(rust_mean)} ± {format_time(rust_std)}")
+        rust_bytes_mean, rust_bytes_std = benchmark_function(
+            "Rust loads_bytes", nsv_rust.loads_bytes, nsv_bytes
+        )
+        py_bytes_mean, py_bytes_std = benchmark_function(
+            "Python loads_bytes", nsv_python.loads_bytes, nsv_bytes
+        )
 
-        # Calculate speedup
-        speedup = py_mean / rust_mean
-        print(f"  Speedup:       {format_speedup(speedup)}")
+        loads_speedup = py_mean / rust_mean
+        loads_bytes_speedup = py_mean / rust_bytes_mean  # bytes vs Python str baseline
 
-        # Benchmark dumps
-        py_dumps_mean, _ = benchmark_function("Python dumps", lambda _: nsv_python.dumps(data), "")
-        rust_dumps_mean, _ = benchmark_function("Rust dumps", lambda _: nsv_rust.dumps(data), "")
+        print(f"  Python loads:        {format_time(py_mean)} ± {format_time(py_std)}")
+        print(f"  Rust loads (str):    {format_time(rust_mean)} ± {format_time(rust_std)}  [{format_speedup(loads_speedup)}]")
+        print(f"  Rust loads_bytes:    {format_time(rust_bytes_mean)} ± {format_time(rust_bytes_std)}  [{format_speedup(loads_bytes_speedup)}]")
+        print(f"  Python loads_bytes:  {format_time(py_bytes_mean)} ± {format_time(py_bytes_std)}")
+
+        # ── dumps ──────────────────────────────────────────────────────────
+        py_dumps_mean, _ = benchmark_function("Python dumps", lambda _: nsv_python.dumps(data), None)
+        rust_dumps_mean, _ = benchmark_function("Rust dumps", lambda _: nsv_rust.dumps(data), None)
+        rust_dumps_bytes_mean, _ = benchmark_function(
+            "Rust dumps_bytes", lambda _: nsv_rust.dumps_bytes(data_bytes), None
+        )
+        py_dumps_bytes_mean, _ = benchmark_function(
+            "Python dumps_bytes", lambda _: nsv_python.dumps_bytes(data_bytes), None
+        )
+
         dumps_speedup = py_dumps_mean / rust_dumps_mean
+        dumps_bytes_speedup = py_dumps_mean / rust_dumps_bytes_mean
 
-        print(f"  Python dumps:  {format_time(py_dumps_mean)}")
-        print(f"  Rust dumps:    {format_time(rust_dumps_mean)}")
-        print(f"  Dumps speedup: {format_speedup(dumps_speedup)}")
+        print(f"  Python dumps:        {format_time(py_dumps_mean)}")
+        print(f"  Rust dumps (str):    {format_time(rust_dumps_mean)}  [{format_speedup(dumps_speedup)}]")
+        print(f"  Rust dumps_bytes:    {format_time(rust_dumps_bytes_mean)}  [{format_speedup(dumps_bytes_speedup)}]")
+        print(f"  Python dumps_bytes:  {format_time(py_dumps_bytes_mean)}")
         print()
 
         results.append({
@@ -239,40 +253,54 @@ def run_benchmark_suite():
             'size_bytes': len(nsv_str),
             'py_loads': py_mean,
             'rust_loads': rust_mean,
-            'loads_speedup': speedup,
+            'loads_speedup': loads_speedup,
+            'rust_loads_bytes': rust_bytes_mean,
+            'loads_bytes_speedup': loads_bytes_speedup,
             'py_dumps': py_dumps_mean,
             'rust_dumps': rust_dumps_mean,
             'dumps_speedup': dumps_speedup,
+            'rust_dumps_bytes': rust_dumps_bytes_mean,
+            'dumps_bytes_speedup': dumps_bytes_speedup,
         })
 
     # Print summary table
-    print("=" * 80)
+    print("=" * 96)
     print("SUMMARY")
-    print("=" * 80)
+    print("=" * 96)
     print()
-    print(f"{'Test Case':<30} {'Size (MB)':<12} {'Loads Speedup':<15} {'Dumps Speedup':<15}")
-    print("-" * 80)
+    print(f"{'Test Case':<30} {'Size (MB)':<10} {'loads(str)':<13} {'loads_bytes':<13} {'dumps(str)':<13} {'dumps_bytes':<13}")
+    print("-" * 96)
 
     for r in results:
         size_mb = r['size_bytes'] / (1024 * 1024)
-        print(f"{r['name']:<30} {size_mb:>11.2f} {r['loads_speedup']:>14.2f}x {r['dumps_speedup']:>14.2f}x")
+        print(
+            f"{r['name']:<30} {size_mb:>9.2f} "
+            f"{r['loads_speedup']:>11.2f}x "
+            f"{r['loads_bytes_speedup']:>11.2f}x "
+            f"{r['dumps_speedup']:>11.2f}x "
+            f"{r['dumps_bytes_speedup']:>11.2f}x"
+        )
 
     print()
-    print(f"Average loads speedup: {sum(r['loads_speedup'] for r in results) / len(results):.2f}x")
-    print(f"Average dumps speedup: {sum(r['dumps_speedup'] for r in results) / len(results):.2f}x")
+    avg_loads     = sum(r['loads_speedup']       for r in results) / len(results)
+    avg_loads_b   = sum(r['loads_bytes_speedup'] for r in results) / len(results)
+    avg_dumps     = sum(r['dumps_speedup']       for r in results) / len(results)
+    avg_dumps_b   = sum(r['dumps_bytes_speedup'] for r in results) / len(results)
+    print(f"Average Rust str  speedup:   loads {avg_loads:.2f}x  dumps {avg_dumps:.2f}x")
+    print(f"Average Rust bytes speedup:  loads {avg_loads_b:.2f}x  dumps {avg_dumps_b:.2f}x")
     print()
 
     # Show which test cases benefit most
-    print("Top 3 cases with highest loads speedup:")
-    sorted_loads = sorted(results, key=lambda x: x['loads_speedup'], reverse=True)
+    print("Top 3 cases with highest loads_bytes speedup:")
+    sorted_loads = sorted(results, key=lambda x: x['loads_bytes_speedup'], reverse=True)
     for i, r in enumerate(sorted_loads[:3], 1):
-        print(f"  {i}. {r['name']}: {r['loads_speedup']:.2f}x")
+        print(f"  {i}. {r['name']}: {r['loads_bytes_speedup']:.2f}x")
 
     print()
-    print("Top 3 cases with highest dumps speedup:")
-    sorted_dumps = sorted(results, key=lambda x: x['dumps_speedup'], reverse=True)
+    print("Top 3 cases with highest dumps_bytes speedup:")
+    sorted_dumps = sorted(results, key=lambda x: x['dumps_bytes_speedup'], reverse=True)
     for i, r in enumerate(sorted_dumps[:3], 1):
-        print(f"  {i}. {r['name']}: {r['dumps_speedup']:.2f}x")
+        print(f"  {i}. {r['name']}: {r['dumps_bytes_speedup']:.2f}x")
 
 
 if __name__ == "__main__":
