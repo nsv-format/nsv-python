@@ -5,9 +5,9 @@ from .writer import Writer
 
 # Try to use fast Rust implementation, fall back to Python
 try:
-    from nsv_rust_ext import loads, dumps
+    from nsv_rust_ext import loads, dumps, loads_bytes, dumps_bytes
 except ImportError:
-    from ._python_impl import loads, dumps
+    from ._python_impl import loads, dumps, loads_bytes, dumps_bytes
 
 
 def load(file_obj) -> List[List[str]]:

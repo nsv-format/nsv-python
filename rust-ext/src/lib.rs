@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
-use pyo3::types::PyList;
+use pyo3::types::{PyBytes, PyList};
 
-/// Parse NSV string into a list of lists
+/// Parse NSV string into a list of lists of str
 #[pyfunction]
 fn loads(py: Python, s: &str) -> PyResult<PyObject> {
     let data = nsv::decode(s);
@@ -25,10 +25,34 @@ fn dumps(data: Vec<Vec<String>>) -> PyResult<String> {
     Ok(nsv::encode(&data))
 }
 
+/// Parse NSV bytes into a list of lists of bytes
+#[pyfunction]
+fn loads_bytes(py: Python, data: &[u8]) -> PyResult<PyObject> {
+    let rows = nsv::decode_bytes(data);
+    let result = PyList::empty(py);
+    for row in rows {
+        let py_row = PyList::empty(py);
+        for cell in row {
+            py_row.append(PyBytes::new(py, &cell))?;
+        }
+        result.append(py_row)?;
+    }
+    Ok(result.into())
+}
+
+/// Serialize a list of lists of bytes to NSV bytes
+#[pyfunction]
+fn dumps_bytes(py: Python, data: Vec<Vec<Vec<u8>>>) -> PyResult<PyObject> {
+    let result = nsv::encode_bytes(&data);
+    Ok(PyBytes::new(py, &result).into())
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn nsv_rust_ext(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(loads, m)?)?;
     m.add_function(wrap_pyfunction!(dumps, m)?)?;
+    m.add_function(wrap_pyfunction!(loads_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(dumps_bytes, m)?)?;
     Ok(())
 }
