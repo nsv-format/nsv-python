@@ -108,7 +108,11 @@ def loads_bytes(b: bytes) -> List[List[bytes]]:
 
 
 def dumps_bytes(data: Iterable[Iterable[bytes]]) -> bytes:
-    """Write elements to NSV bytes (pure Python implementation)."""
+    """Write elements to NSV bytes (pure Python implementation).
+
+    Not part of the public API. See notes on the Rust binding for
+    prerequisites that would make the bytes encode path worthwhile.
+    """
     out = bytearray()
     for row in data:
         for cell in row:

@@ -3,6 +3,7 @@
 import unittest
 
 import nsv
+from nsv.core import dumps_bytes  # not part of the public nsv package API
 from nsv._python_impl import loads_bytes as py_loads_bytes, dumps_bytes as py_dumps_bytes
 from test_utils import SAMPLES_DATA
 
@@ -54,57 +55,57 @@ class TestLoadsBytesBasic(unittest.TestCase):
     def test_non_ascii_bytes(self):
         # Latin-1 bytes — not valid UTF-8, but should round-trip fine
         cell = bytes([0xC0, 0xE9, 0xF1])
-        encoded = nsv.dumps_bytes([[cell]])
+        encoded = dumps_bytes([[cell]])
         result = nsv.loads_bytes(encoded)
         self.assertEqual(result, [[cell]])
 
 
 class TestDumpsBytesBasic(unittest.TestCase):
     def test_empty_input(self):
-        self.assertEqual(nsv.dumps_bytes([]), b'')
+        self.assertEqual(dumps_bytes([]), b'')
 
     def test_single_row(self):
-        result = nsv.dumps_bytes([[b'a', b'b']])
+        result = dumps_bytes([[b'a', b'b']])
         self.assertEqual(result, b'a\nb\n\n')
 
     def test_empty_cell(self):
-        result = nsv.dumps_bytes([[b'']])
+        result = dumps_bytes([[b'']])
         self.assertEqual(result, b'\\\n\n')
 
     def test_newline_in_cell(self):
-        result = nsv.dumps_bytes([[b'line1\nline2']])
+        result = dumps_bytes([[b'line1\nline2']])
         self.assertEqual(result, b'line1\\nline2\n\n')
 
     def test_backslash_in_cell(self):
-        result = nsv.dumps_bytes([[b'\\']])
+        result = dumps_bytes([[b'\\']])
         self.assertEqual(result, b'\\\\\n\n')
 
 
 class TestRoundtrip(unittest.TestCase):
     def test_roundtrip_simple(self):
         original = [[b'hello', b'world'], [b'foo', b'bar']]
-        self.assertEqual(nsv.loads_bytes(nsv.dumps_bytes(original)), original)
+        self.assertEqual(nsv.loads_bytes(dumps_bytes(original)), original)
 
     def test_roundtrip_empty_rows(self):
         original = [[], [b'a'], [], [b'b', b'c'], []]
-        self.assertEqual(nsv.loads_bytes(nsv.dumps_bytes(original)), original)
+        self.assertEqual(nsv.loads_bytes(dumps_bytes(original)), original)
 
     def test_roundtrip_special_chars(self):
         original = [
             [b'newline\nhere', b'back\\slash'],
             [b'', b'normal'],
         ]
-        self.assertEqual(nsv.loads_bytes(nsv.dumps_bytes(original)), original)
+        self.assertEqual(nsv.loads_bytes(dumps_bytes(original)), original)
 
     def test_roundtrip_non_ascii(self):
         original = [[bytes(range(1, 128))]]  # all non-null, non-LF ASCII bytes
-        self.assertEqual(nsv.loads_bytes(nsv.dumps_bytes(original)), original)
+        self.assertEqual(nsv.loads_bytes(dumps_bytes(original)), original)
 
     def test_roundtrip_arbitrary_bytes(self):
         # All byte values except LF (0x0A) and backslash (0x5C) need no escaping
         cell = bytes([b for b in range(256) if b != 0x0A and b != 0x5C])
         original = [[cell]]
-        self.assertEqual(nsv.loads_bytes(nsv.dumps_bytes(original)), original)
+        self.assertEqual(nsv.loads_bytes(dumps_bytes(original)), original)
 
 
 class TestParityWithStrApi(unittest.TestCase):
@@ -113,7 +114,7 @@ class TestParityWithStrApi(unittest.TestCase):
     def test_parity_all_samples(self):
         for name, expected_str in SAMPLES_DATA.items():
             with self.subTest(sample=name):
-                nsv_bytes = nsv.dumps_bytes(_str_to_bytes(expected_str))
+                nsv_bytes = dumps_bytes(_str_to_bytes(expected_str))
                 result_bytes = nsv.loads_bytes(nsv_bytes)
                 result_str = _bytes_to_str(result_bytes)
                 self.assertEqual(result_str, expected_str)
@@ -134,7 +135,7 @@ class TestParityWithStrApi(unittest.TestCase):
                 bytes_data = _str_to_bytes(expected)
                 self.assertEqual(
                     nsv.dumps(expected),
-                    nsv.dumps_bytes(bytes_data).decode(),
+                    dumps_bytes(bytes_data).decode(),
                 )
 
 
@@ -166,7 +167,7 @@ class TestPythonFallbackParity(unittest.TestCase):
         ]
         for data in cases:
             with self.subTest(data=data):
-                self.assertEqual(nsv.dumps_bytes(data), py_dumps_bytes(data))
+                self.assertEqual(dumps_bytes(data), py_dumps_bytes(data))
 
 
 if __name__ == '__main__':

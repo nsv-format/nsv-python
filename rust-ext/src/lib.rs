@@ -40,7 +40,17 @@ fn loads_bytes(py: Python, data: &[u8]) -> PyResult<PyObject> {
     Ok(result.into())
 }
 
-/// Serialize a list of lists of bytes to NSV bytes
+/// Serialize a list of lists of bytes to NSV bytes.
+///
+/// Not part of the public API. Benchmarks show this is slower than dumps()
+/// because PyO3 must copy every bytes cell into a Rust Vec<u8> before
+/// encoding — same per-cell cost as the str path, plus extra indirection.
+///
+/// Prerequisites to make this worthwhile:
+///   1. Caller already holds data as bytes (no str->bytes conversion upstream).
+///   2. A streaming/writer API so the output doesn't need to be a single
+///      allocated Python bytes object for the whole result.
+///   3. Or: cells arrive pre-escaped so encoding reduces to assembly only.
 #[pyfunction]
 fn dumps_bytes(py: Python, data: Vec<Vec<Vec<u8>>>) -> PyResult<PyObject> {
     let result = nsv::encode_bytes(&data);
