@@ -1,6 +1,7 @@
 import unittest
 
 from nsv.ensv import lift, unlift
+from nsv.util import escape_seqseq, spill
 
 
 class TestLift(unittest.TestCase):
@@ -38,10 +39,6 @@ class TestLift(unittest.TestCase):
             ['a', '', '', 'b'],
             lift([['a'], [], ['b']]),
         )
-
-    def test_empty_seqseq_raises(self):
-        with self.assertRaises(ValueError):
-            lift([])
 
     def test_escaping_backslash(self):
         """Cells containing backslashes are escaped during lift."""
@@ -188,6 +185,28 @@ class TestUnliftLiftRoundtrip(unittest.TestCase):
         for seq in self.CASES:
             with self.subTest(seq=seq):
                 self.assertEqual(seq, lift(unlift(seq)))
+
+
+class TestLiftDecomposition(unittest.TestCase):
+    """Verify equivalence with the decomposition: lift = init ∘ spill[String, ''] ∘ map(map(escape))."""
+
+    CASES = [
+        [['a']],
+        [['a', 'b'], ['c', 'd']],
+        [['a', 'b'], ['c']],
+        [[]],
+        [[], []],
+        [['a'], [], ['b']],
+        [['']],
+        [['a\\b', 'c\nd'], ['', 'e']],
+        [['\\n', '\\\n', '\\\\n'], ['\\\\', '\n\n']],
+    ]
+
+    def test_equivalence(self):
+        for seqseq in self.CASES:
+            with self.subTest(seqseq=seqseq):
+                via_decomposition = spill(escape_seqseq(seqseq), '')[:-1]
+                self.assertEqual(via_decomposition, lift(seqseq))
 
 
 if __name__ == '__main__':

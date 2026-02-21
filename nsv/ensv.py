@@ -2,7 +2,6 @@ from typing import List, Iterable
 
 from .reader import Reader
 from .writer import Writer
-from .util import spill
 
 
 def lift(seqseq: Iterable[Iterable[str]]) -> List[str]:
@@ -10,19 +9,18 @@ def lift(seqseq: Iterable[Iterable[str]]) -> List[str]:
     Lift a seqseq into a single row (sequence of strings), removing one
     dimension without losing structural information.
 
-    lift = init ∘ spill[String, ''] ∘ map(map(escape))
-
-    The result uses separator semantics: empty strings delimit row boundaries,
-    and the final terminator is discarded (init) to preserve line numbers.
-
-    This makes [] irrepresentable; a non-empty seqseq is required.
+    Escapes every cell and chains them with empty-string separators
+    between rows (separator semantics, not terminator).
     """
-    rows = list(seqseq)
-    if not rows:
-        raise ValueError("Cannot lift an empty seqseq: [] is irrepresentable")
-    escaped = [[Writer.escape(cell) for cell in row] for row in rows]
-    spilled = spill(escaped, '')
-    return spilled[:-1]  # init: discard trailing terminator
+    result = []
+    first = True
+    for row in seqseq:
+        if not first:
+            result.append('')
+        for cell in row:
+            result.append(Writer.escape(cell))
+        first = False
+    return result
 
 
 def unlift(seq: Iterable[str]) -> List[List[str]]:

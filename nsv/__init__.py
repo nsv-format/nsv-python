@@ -1,7 +1,6 @@
 from .core import load, loads, dump, dumps
 from .reader import Reader
 from .writer import Writer
-from .ensv import lift, unlift
 
 __version__ = "0.2.2"
 
