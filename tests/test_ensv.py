@@ -5,7 +5,7 @@ import warnings
 
 import nsv
 from nsv.ensv import (
-    Metadata, UnknownForm, ENSVReader, _TABLE_INFER, _ReadResult,
+    Metadata, UnknownForm, ENSVReader, _ReadResult,
     peel, read, encode, lift,
 )
 
@@ -83,15 +83,18 @@ class TestTableForm(unittest.TestCase):
 
     def test_table_explicit_width(self):
         m = Metadata.from_row(lift([['table', '5']]))
-        self.assertEqual(m.table, 5)
+        self.assertTrue(m.table)
+        self.assertEqual(m.width, 5)
 
     def test_table_infer(self):
         m = Metadata.from_row(lift([['table']]))
-        self.assertIs(m.table, _TABLE_INFER)
+        self.assertTrue(m.table)
+        self.assertIsNone(m.width)
 
     def test_table_zero_width(self):
         m = Metadata.from_row(lift([['table', '0']]))
-        self.assertEqual(m.table, 0)
+        self.assertTrue(m.table)
+        self.assertEqual(m.width, 0)
 
     def test_table_too_many_args(self):
         with self.assertRaises(ValueError):
@@ -99,7 +102,7 @@ class TestTableForm(unittest.TestCase):
 
     def test_no_table_form(self):
         m = Metadata.from_row(lift([['columns:', 'a', 'b']]))
-        self.assertIsNone(m.table)
+        self.assertFalse(m.table)
 
 
 class TestUnknownForms(unittest.TestCase):
@@ -107,7 +110,8 @@ class TestUnknownForms(unittest.TestCase):
     def test_unknown_stashed(self):
         m = Metadata.from_row(lift([['custom', 'arg1', 'arg2']]))
         self.assertEqual(len(m.unknown), 1)
-        self.assertEqual(m.unknown[0], UnknownForm('custom', ['arg1', 'arg2']))
+        self.assertEqual(m.unknown[0].name, 'custom')
+        self.assertEqual(m.unknown[0].args, ['arg1', 'arg2'])
 
     def test_multiple_unknown(self):
         m = Metadata.from_row(lift([['foo', 'a'], ['bar', 'b', 'c']]))
@@ -137,7 +141,8 @@ class TestAllFormsTogether(unittest.TestCase):
         self.assertEqual(m.columns, ['name', 'active', 'score'])
         self.assertEqual(m.types, ['str', 'bool', 'int'])
         self.assertEqual(m.bool, ('Y', 'N'))
-        self.assertEqual(m.table, 3)
+        self.assertTrue(m.table)
+        self.assertEqual(m.width, 3)
 
     def test_all_forms_with_unknown(self):
         m = Metadata.from_row(lift([
@@ -170,22 +175,22 @@ class TestArityAgreement(unittest.TestCase):
 
     def test_columns_table_mismatch(self):
         with self.assertRaises(ValueError) as cm:
-            Metadata(columns=['a', 'b'], table=3)
+            Metadata(columns=['a', 'b'], table=True, width=3)
         self.assertIn('columns:', str(cm.exception))
         self.assertIn('table', str(cm.exception))
 
     def test_types_table_mismatch(self):
         with self.assertRaises(ValueError) as cm:
-            Metadata(types=['str', 'int'], table=3)
+            Metadata(types=['str', 'int'], table=True, width=3)
         self.assertIn('types:', str(cm.exception))
         self.assertIn('table', str(cm.exception))
 
     def test_all_three_agree(self):
-        m = Metadata(columns=['a', 'b'], types=['str', 'int'], table=2)
+        m = Metadata(columns=['a', 'b'], types=['str', 'int'], table=True, width=2)
         self.assertEqual(m.columns, ['a', 'b'])
 
     def test_columns_table_infer_no_error(self):
-        m = Metadata(columns=['a', 'b'], table=_TABLE_INFER)
+        m = Metadata(columns=['a', 'b'], table=True)
         self.assertEqual(m.columns, ['a', 'b'])
 
 
@@ -339,29 +344,29 @@ class TestTypeConversionUnknown(unittest.TestCase):
 class TestTableValidation(unittest.TestCase):
 
     def test_explicit_width_correct(self):
-        m = Metadata(table=3)
+        m = Metadata(table=True, width=3)
         self.assertEqual(
             _read(m, [['a', 'b', 'c'], ['d', 'e', 'f']]),
             [['a', 'b', 'c'], ['d', 'e', 'f']])
 
     def test_explicit_width_incorrect(self):
         with self.assertRaises(ValueError) as cm:
-            _read(Metadata(table=3), [['a', 'b']])
+            _read(Metadata(table=True, width=3), [['a', 'b']])
         self.assertIn('row 0', str(cm.exception))
 
     def test_explicit_width_second_row_wrong(self):
         with self.assertRaises(ValueError):
-            _read(Metadata(table=2), [['a', 'b'], ['c']])
+            _read(Metadata(table=True, width=2), [['a', 'b'], ['c']])
 
     def test_infer_from_first_row(self):
-        m = Metadata(table=_TABLE_INFER)
+        m = Metadata(table=True)
         self.assertEqual(
             _read(m, [['a', 'b'], ['c', 'd']]),
             [['a', 'b'], ['c', 'd']])
 
     def test_infer_reject_ragged(self):
         with self.assertRaises(ValueError):
-            _read(Metadata(table=_TABLE_INFER), [['a', 'b'], ['c']])
+            _read(Metadata(table=True), [['a', 'b'], ['c']])
 
     def test_no_table_ragged_ok(self):
         self.assertEqual(
@@ -369,7 +374,7 @@ class TestTableValidation(unittest.TestCase):
             [['a', 'b'], ['c']])
 
     def test_infer_empty_data(self):
-        self.assertEqual(_read(Metadata(table=_TABLE_INFER), []), [])
+        self.assertEqual(_read(Metadata(table=True), []), [])
 
 
 # ===================================================================
@@ -424,7 +429,7 @@ class TestENSVReader(unittest.TestCase):
         self.assertIs(r.meta, m)
 
     def test_width_resets_between_reads(self):
-        r = ENSVReader(Metadata(table=_TABLE_INFER))
+        r = ENSVReader(Metadata(table=True))
         self.assertEqual(list(r.read([['a', 'b']])), [['a', 'b']])
         self.assertEqual(list(r.read([['x', 'y', 'z']])), [['x', 'y', 'z']])
 
@@ -577,10 +582,10 @@ class TestRoundTrip(unittest.TestCase):
         self._roundtrip(Metadata(bool_sentinels=('yes', 'no')))
 
     def test_table_explicit(self):
-        self._roundtrip(Metadata(table=5))
+        self._roundtrip(Metadata(table=True, width=5))
 
     def test_table_infer(self):
-        self._roundtrip(Metadata(table=_TABLE_INFER))
+        self._roundtrip(Metadata(table=True))
 
     def test_unknown_forms(self):
         self._roundtrip(Metadata(unknown=[UnknownForm('custom', ['x', 'y'])]))
@@ -588,7 +593,7 @@ class TestRoundTrip(unittest.TestCase):
     def test_all_forms(self):
         self._roundtrip(Metadata(
             columns=['a', 'b'], types=['str', 'int'],
-            bool_sentinels=('t', 'f'), table=2,
+            bool_sentinels=('t', 'f'), table=True, width=2,
             unknown=[UnknownForm('extra', ['val'])],
         ))
 
@@ -605,7 +610,7 @@ class TestRoundTrip(unittest.TestCase):
         self._roundtrip(Metadata(unknown=[UnknownForm('nullable', ['', 'NULL'])]))
 
     def test_nsv_full_roundtrip(self):
-        meta = Metadata(columns=['name', 'score'], types=['str', 'int'], table=2)
+        meta = Metadata(columns=['name', 'score'], types=['str', 'int'], table=True, width=2)
         data = [['Alice', '100'], ['Bob', '200']]
 
         ensv_seqseq = encode(meta, data)
@@ -627,7 +632,7 @@ class TestSidecaredMetadata(unittest.TestCase):
         meta = Metadata(
             columns=['id', 'name', 'active'],
             types=['int', 'str', 'bool'],
-            bool_sentinels=('Y', 'N'), table=3,
+            bool_sentinels=('Y', 'N'), table=True, width=3,
         )
         data = [['1', 'Alice', 'Y'], ['2', 'Bob', 'N']]
         result = _read(meta, data)
@@ -645,7 +650,7 @@ class TestSidecaredMetadata(unittest.TestCase):
 
     def test_sidecar_table_validation(self):
         with self.assertRaises(ValueError):
-            _read(Metadata(table=2), [['a', 'b', 'c']])
+            _read(Metadata(table=True, width=2), [['a', 'b', 'c']])
 
     def test_sidecar_no_metadata(self):
         self.assertEqual(
@@ -665,7 +670,7 @@ class TestEncode(unittest.TestCase):
         self.assertEqual(len(seqseq), 3)
 
     def test_full_pipeline(self):
-        meta = Metadata(types=['str', 'int', 'float', 'date'], table=4)
+        meta = Metadata(types=['str', 'int', 'float', 'date'], table=True, width=4)
         data = [
             ['hello', '42', '3.14', '2024-01-01'],
             ['world', '-1', '0.0', '2024-12-31'],
@@ -694,7 +699,7 @@ class TestEdgeCases(unittest.TestCase):
         self.assertIsNone(meta.columns)
         self.assertIsNone(meta.types)
         self.assertIsNone(meta.bool)
-        self.assertIsNone(meta.table)
+        self.assertFalse(meta.table)
         self.assertEqual(meta.unknown, [])
 
     def test_multiple_type_conversions_per_row(self):

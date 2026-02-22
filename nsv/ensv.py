@@ -55,17 +55,6 @@ class UnknownForm:
         self.name = name
         self.args = list(args)
 
-    def __eq__(self, other):
-        return (isinstance(other, UnknownForm)
-                and self.name == other.name
-                and self.args == other.args)
-
-    def __repr__(self):
-        return f"UnknownForm({self.name!r}, {self.args!r})"
-
-
-_TABLE_INFER = object()
-
 
 class Metadata:
     KNOWN_TYPES = frozenset({
@@ -73,27 +62,29 @@ class Metadata:
     })
 
     def __init__(self, *, columns=None, types=None, bool_sentinels=None,
-                 table=None, unknown=None):
+                 table=False, width=None, unknown=None):
         self.columns = list(columns) if columns is not None else None
         self.types = list(types) if types is not None else None
         self.bool = tuple(bool_sentinels) if bool_sentinels is not None else None
         self.table = table
+        self.width = width
         self.unknown = list(unknown) if unknown is not None else []
         self._validate_consistency()
 
     def _validate_consistency(self):
-        effective_width = self.table if isinstance(self.table, int) else None
+        if self.width is not None and not self.table:
+            raise ValueError("width requires table=True")
 
-        if self.columns is not None and effective_width is not None:
-            if len(self.columns) != effective_width:
+        if self.columns is not None and self.width is not None:
+            if len(self.columns) != self.width:
                 raise ValueError(
                     f"columns: arity ({len(self.columns)}) does not match "
-                    f"table width ({effective_width})")
-        if self.types is not None and effective_width is not None:
-            if len(self.types) != effective_width:
+                    f"table width ({self.width})")
+        if self.types is not None and self.width is not None:
+            if len(self.types) != self.width:
                 raise ValueError(
                     f"types: arity ({len(self.types)}) does not match "
-                    f"table width ({effective_width})")
+                    f"table width ({self.width})")
         if self.columns is not None and self.types is not None:
             if len(self.columns) != len(self.types):
                 raise ValueError(
@@ -110,7 +101,8 @@ class Metadata:
         columns = None
         types = None
         bool_sentinels = None
-        table = None
+        table = False
+        width = None
         unknown = []
 
         for form in forms:
@@ -134,10 +126,11 @@ class Metadata:
                         f"got {len(args)}")
                 bool_sentinels = (args[0], args[1])
             elif name == 'table':
+                table = True
                 if len(args) == 0:
-                    table = _TABLE_INFER
+                    width = None
                 elif len(args) == 1:
-                    table = int(args[0])
+                    width = int(args[0])
                 else:
                     raise ValueError(
                         f"table form takes 0 or 1 argument, got {len(args)}")
@@ -149,6 +142,7 @@ class Metadata:
             types=types,
             bool_sentinels=bool_sentinels,
             table=table,
+            width=width,
             unknown=unknown,
         )
 
@@ -160,21 +154,27 @@ class Metadata:
             forms.append(['types:'] + self.types)
         if self.bool is not None:
             forms.append(['bool', self.bool[0], self.bool[1]])
-        if self.table is _TABLE_INFER:
-            forms.append(['table'])
-        elif self.table is not None:
-            forms.append(['table', str(self.table)])
+        if self.table:
+            if self.width is not None:
+                forms.append(['table', str(self.width)])
+            else:
+                forms.append(['table'])
         for uf in self.unknown:
             forms.append([uf.name] + uf.args)
         return lift(forms)
 
     def __eq__(self, other):
-        return (isinstance(other, Metadata)
-                and self.columns == other.columns
+        if not isinstance(other, Metadata):
+            return NotImplemented
+        if not (self.columns == other.columns
                 and self.types == other.types
                 and self.bool == other.bool
                 and self.table == other.table
-                and self.unknown == other.unknown)
+                and self.width == other.width
+                and len(self.unknown) == len(other.unknown)):
+            return False
+        return all(a.name == b.name and a.args == b.args
+                   for a, b in zip(self.unknown, other.unknown))
 
     def __repr__(self):
         parts = []
@@ -184,8 +184,10 @@ class Metadata:
             parts.append(f"types={self.types!r}")
         if self.bool is not None:
             parts.append(f"bool={self.bool!r}")
-        if self.table is not None:
-            parts.append(f"table={self.table!r}")
+        if self.table:
+            parts.append(f"table=True")
+            if self.width is not None:
+                parts.append(f"width={self.width!r}")
         if self.unknown:
             parts.append(f"unknown={self.unknown!r}")
         return f"Metadata({', '.join(parts)})"
@@ -205,10 +207,10 @@ class ENSVReader:
 
     def read(self, rows):
         meta = self._meta
-        table_width = meta.table if isinstance(meta.table, int) else None
+        table_width = meta.width
 
         for i, row in enumerate(rows):
-            if meta.table is not None:
+            if meta.table:
                 if table_width is None:
                     table_width = len(row)
                 elif len(row) != table_width:
