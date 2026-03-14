@@ -2,8 +2,8 @@
 
 from typing import List, Iterable
 
-from .reader import Reader
-from .writer import Writer
+from .reader import Reader as NSVReader
+from .writer import Writer as NSVWriter
 
 
 def lift(seqseq: Iterable[Iterable[str]]) -> List[str]:
@@ -20,7 +20,7 @@ def lift(seqseq: Iterable[Iterable[str]]) -> List[str]:
         if not first:
             result.append('')
         for cell in row:
-            result.append(Writer.escape(cell))
+            result.append(NSVWriter.escape(cell))
         first = False
     return result
 
@@ -39,7 +39,7 @@ def unlift(seq: Iterable[str]) -> List[List[str]]:
     row = []
     for element in seq:
         if element != '':
-            row.append(Reader.unescape(element))
+            row.append(NSVReader.unescape(element))
         else:
             rows.append(row)
             row = []
@@ -47,19 +47,55 @@ def unlift(seq: Iterable[str]) -> List[List[str]]:
     return rows
 
 
-def split(seqseq):
-    """Split a seqseq at the first empty row.
+class Reader:
+    def __init__(self, file_obj):
+        self._file = file_obj
+        self.meta = []
+        self._read_meta()
 
-    Returns (meta, offset, data) where meta is the rows before the
-    separator, offset is the index of the first data row, and data
-    is the rows after.  If no empty row exists, all rows are meta.
-    """
-    for i, row in enumerate(seqseq):
-        if not row:
-            return seqseq[:i], i + 1, seqseq[i + 1:]
-    return list(seqseq), len(seqseq), []
+    def _read_meta(self):
+        row = []
+        for line in self._file:
+            if line == '\n':
+                if not row:
+                    break
+                self.meta.append(row)
+                row = []
+            else:
+                if line[-1] == '\n':
+                    line = line[:-1]
+                row.append(NSVReader.unescape(line))
+        else:
+            if row:
+                self.meta.append(row)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        acc = []
+        for line in self._file:
+            if line == '\n':
+                return acc
+            if line[-1] == '\n':
+                line = line[:-1]
+            acc.append(NSVReader.unescape(line))
+        if acc:
+            return acc
+        raise StopIteration
 
 
-def join(meta, data):
-    """Inverse of split. Concatenates meta + empty row + data."""
-    return list(meta) + [[]] + list(data)
+class Writer:
+    def __init__(self, file_obj):
+        self._inner = NSVWriter(file_obj)
+
+    def write_meta(self, meta):
+        for row in meta:
+            self._inner.write_row(row)
+        self._inner.write_row([])
+
+    def write_row(self, row):
+        self._inner.write_row(row)
+
+    def write_rows(self, rows):
+        self._inner.write_rows(rows)
