@@ -1,8 +1,12 @@
 import unittest
 from io import StringIO
 
-import pandas as pd
-import numpy as np
+try:
+    import pandas as pd
+    import numpy as np
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
 
 import nsv
 
@@ -11,6 +15,10 @@ def setUpModule():
     nsv.patch_pandas()
 
 
+skip_no_pandas = unittest.skipUnless(HAS_PANDAS, 'pandas not installed')
+
+
+@skip_no_pandas
 class TestReadNsvTypeInference(unittest.TestCase):
     """read_nsv should infer types the same way read_csv does."""
 
@@ -54,6 +62,7 @@ class TestReadNsvTypeInference(unittest.TestCase):
         self._compare_with_csv([['', ''], ['', '']])
 
 
+@skip_no_pandas
 class TestReadNsvNullInference(unittest.TestCase):
     """read_nsv should treat the same strings as NaN that read_csv does."""
 
@@ -88,6 +97,7 @@ class TestReadNsvNullInference(unittest.TestCase):
         self._compare_with_csv([['NA', 'a'], ['NaN', 'b'], ['null', 'c']])
 
 
+@skip_no_pandas
 class TestReadNsvBoolInference(unittest.TestCase):
     """read_nsv should infer bool columns the same way read_csv does."""
 
@@ -121,6 +131,7 @@ class TestReadNsvBoolInference(unittest.TestCase):
         self._compare_with_csv([['T', 'F'], ['T', 'F']])
 
 
+@skip_no_pandas
 class TestReadNsvDtype(unittest.TestCase):
     """read_nsv should support explicit dtype parameter."""
 
@@ -140,6 +151,7 @@ class TestReadNsvDtype(unittest.TestCase):
         self.assertFalse(pd.api.types.is_numeric_dtype(df[1]))
 
 
+@skip_no_pandas
 class TestToNsv(unittest.TestCase):
     """to_nsv should handle non-string types gracefully."""
 
