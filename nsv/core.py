@@ -30,7 +30,7 @@ def dump(data: Iterable[Iterable[str]], file_obj):
 def dumps(data: Iterable[Iterable[str]]) -> str:
     """Write elements to an NSV string."""
     lines = []
-    for i, row in enumerate(data):
+    for row in data:
         for cell in row:
             lines.append(Writer.escape(cell))
         lines.append('')

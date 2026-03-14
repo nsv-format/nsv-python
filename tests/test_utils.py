@@ -42,7 +42,7 @@ def dump_then_load(data):
 
 
 def load_then_dump(s):
-    return nsv.dumps(*nsv.loads(s))
+    return nsv.dumps(nsv.loads(s))
 
 
 def load_sample(name):
