@@ -63,7 +63,7 @@ class Reader:
             else:
                 col += 1
         if escaped:
-            sus.append(len(s) - 1)
+            sus.append((len(s) - 1, line, col))
         for pos, line, col in sus:
             print(f'WARNING: Unescaped backslash at position {pos} ({line}:{col})')
         if s[-1] != '\n':
