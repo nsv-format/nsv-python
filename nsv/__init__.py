@@ -9,23 +9,41 @@ FEATURES = {}
 def patch_pandas():
     """Add NSV support to pandas if available in context."""
     import sys
-    import io
-    import csv
     if 'pandas' not in sys.modules:
         return
     pd = sys.modules['pandas']
+    from pandas.io.parsers.readers import STR_NA_VALUES
 
-    def read_nsv(filepath_or_buffer, **kwargs):
+    bool_values = frozenset({'true', 'false'})
+
+    def _infer_column(col):
+        na_mask = col.isin(STR_NA_VALUES)
+        col_na = col.where(~na_mask)
+
+        converted = pd.to_numeric(col_na, errors='coerce')
+        if not (converted.isna() & col_na.notna()).any():
+            return converted
+
+        non_na = col_na.dropna()
+        if len(non_na) > 0 and non_na.str.lower().isin(bool_values).all():
+            as_bool = col_na.map(lambda x: x.lower() == 'true' if pd.notna(x) else x)
+            return as_bool if na_mask.any() else as_bool.astype(bool)
+
+        return col_na
+
+    def read_nsv(filepath_or_buffer, dtype=None, **kwargs):
         if isinstance(filepath_or_buffer, str):
             with open(filepath_or_buffer, 'r') as f:
                 data = load(f)
         else:
             data = load(filepath_or_buffer)
-
-        buf = io.StringIO()
-        csv.writer(buf).writerows(data)
-        buf.seek(0)
-        return pd.read_csv(buf, header=None, **kwargs)
+        df = pd.DataFrame(data)
+        if dtype is not None:
+            df = df.astype(dtype)
+        else:
+            for col in df.columns:
+                df[col] = _infer_column(df[col])
+        return df
 
     def to_nsv(self, path_or_buf=None, **kwargs):
         data = [['' if pd.isna(v) else str(v) for v in row] for row in self.values]
