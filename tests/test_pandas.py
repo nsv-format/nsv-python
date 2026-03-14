@@ -54,6 +54,73 @@ class TestReadNsvTypeInference(unittest.TestCase):
         self._compare_with_csv([['', ''], ['', '']])
 
 
+class TestReadNsvNullInference(unittest.TestCase):
+    """read_nsv should treat the same strings as NaN that read_csv does."""
+
+    def _compare_with_csv(self, rows):
+        nsv_str = nsv.dumps(rows)
+        csv_str = '\n'.join(','.join(row) for row in rows) + '\n'
+        nsv_df = pd.read_nsv(StringIO(nsv_str))
+        csv_df = pd.read_csv(StringIO(csv_str), header=None)
+        self.assertEqual(list(nsv_df.dtypes), list(csv_df.dtypes),
+                         f"dtype mismatch for rows={rows}")
+        pd.testing.assert_frame_equal(nsv_df, csv_df)
+
+    def test_na_string_in_numeric_column(self):
+        self._compare_with_csv([['NA', '1'], ['2', '3']])
+
+    def test_nan_string_in_numeric_column(self):
+        self._compare_with_csv([['NaN', '1'], ['2', '3']])
+
+    def test_nan_lowercase_in_numeric_column(self):
+        self._compare_with_csv([['nan', '1'], ['2', '3']])
+
+    def test_null_string_in_numeric_column(self):
+        self._compare_with_csv([['null', '1'], ['2', '3']])
+
+    def test_none_string_in_numeric_column(self):
+        self._compare_with_csv([['None', '1'], ['2', '3']])
+
+    def test_na_string_in_string_column(self):
+        self._compare_with_csv([['hello', 'NA'], ['world', 'there']])
+
+    def test_all_na_column(self):
+        self._compare_with_csv([['NA', 'a'], ['NaN', 'b'], ['null', 'c']])
+
+
+class TestReadNsvBoolInference(unittest.TestCase):
+    """read_nsv should infer bool columns the same way read_csv does."""
+
+    def _compare_with_csv(self, rows):
+        nsv_str = nsv.dumps(rows)
+        csv_str = '\n'.join(','.join(row) for row in rows) + '\n'
+        nsv_df = pd.read_nsv(StringIO(nsv_str))
+        csv_df = pd.read_csv(StringIO(csv_str), header=None)
+        self.assertEqual(list(nsv_df.dtypes), list(csv_df.dtypes),
+                         f"dtype mismatch for rows={rows}")
+        pd.testing.assert_frame_equal(nsv_df, csv_df)
+
+    def test_bool_true_false(self):
+        self._compare_with_csv([['True', 'False'], ['True', 'False']])
+
+    def test_bool_lowercase(self):
+        self._compare_with_csv([['true', 'false'], ['true', 'false']])
+
+    def test_bool_uppercase(self):
+        self._compare_with_csv([['TRUE', 'FALSE'], ['TRUE', 'FALSE']])
+
+    def test_bool_mixed_case(self):
+        self._compare_with_csv([['True', 'false'], ['FALSE', 'True']])
+
+    def test_bool_with_na(self):
+        # NA mixed in: read_csv returns object with Python bools and nan
+        self._compare_with_csv([['True', 'a'], ['NA', 'b'], ['False', 'c']])
+
+    def test_not_bool_T_F(self):
+        # 'T'/'F' are NOT inferred as bool by read_csv
+        self._compare_with_csv([['T', 'F'], ['T', 'F']])
+
+
 class TestReadNsvDtype(unittest.TestCase):
     """read_nsv should support explicit dtype parameter."""
 
