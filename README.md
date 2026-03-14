@@ -1,6 +1,6 @@
 # NSV Python
 
-Python implementation of the [NSV (Newline-Separated Values)](https://github.com/namingbe/nsv) format.
+Python implementation of the [NSV (Newline-Separated Values)](https://nsv-format.org) format.
 
 ## Installation
 
@@ -13,7 +13,7 @@ pip install nsv
 ### From Source
 
 ```bash
-git clone https://github.com/namingbe/nsv-python.git
+git clone https://github.com/nsv-format/nsv-python.git
 cd nsv-python
 pip install -e .
 ```
@@ -38,24 +38,9 @@ with open('output.nsv', 'w') as f:
     writer.write_row(['row2cell1', 'row2cell2', 'row2cell3'])
 ```
 
-### Running Tests
+## Vendor
 
-**Important**: Always run tests from the project root to test local code changes (not the installed package):
-
-```bash
-python -m unittest discover -s tests -p 'test*.py' -v
-```
-
-Alternatively, install in editable mode:
-
-```bash
-pip install -e .
-```
-
-## Features
-
-- [x] Core parsing
-- [x] Resumable consumption
-- [x] `spill`/`unspill` operations
-- [ ] Integrate `nsv-rust` to performance
+The core NSV format is frozen by-design.  
+Unless you rely on ENSV features or are performance-aware, copying the naive implementation directly to your codebase may be the better way to handle NSV files.  
+Controllable code, controllable interfaces, zero chance of a supply-chain attack.
 
