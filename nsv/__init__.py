@@ -6,48 +6,26 @@ __version__ = "0.2.2"
 
 FEATURES = {}
 
-_BOOL_VALUES = frozenset({'true', 'false'})
-
-
 def patch_pandas():
     """Add NSV support to pandas if available in context."""
     import sys
+    import io
+    import csv
     if 'pandas' not in sys.modules:
         return
     pd = sys.modules['pandas']
-    from pandas.io.parsers.readers import STR_NA_VALUES
 
-    def _infer_column(col):
-        """Infer dtype to match read_csv auto-detection."""
-        na_mask = col.isin(STR_NA_VALUES)
-        col_na = col.where(~na_mask)
-
-        # Numeric: accept if no non-NA values are lost
-        converted = pd.to_numeric(col_na, errors='coerce')
-        if not (converted.isna() & col_na.notna()).any():
-            return converted
-
-        # Bool: all non-NA values must be true/false (case-insensitive)
-        non_na = col_na.dropna()
-        if len(non_na) > 0 and non_na.str.lower().isin(_BOOL_VALUES).all():
-            as_bool = col_na.map(lambda x: x.lower() == 'true' if pd.notna(x) else x)
-            return as_bool if na_mask.any() else as_bool.astype(bool)
-
-        return col_na
-
-    def read_nsv(filepath_or_buffer, dtype=None, **kwargs):
+    def read_nsv(filepath_or_buffer, **kwargs):
         if isinstance(filepath_or_buffer, str):
             with open(filepath_or_buffer, 'r') as f:
                 data = load(f)
         else:
             data = load(filepath_or_buffer)
-        df = pd.DataFrame(data)
-        if dtype is not None:
-            df = df.astype(dtype)
-        else:
-            for col in df.columns:
-                df[col] = _infer_column(df[col])
-        return df
+
+        buf = io.StringIO()
+        csv.writer(buf).writerows(data)
+        buf.seek(0)
+        return pd.read_csv(buf, header=None, **kwargs)
 
     def to_nsv(self, path_or_buf=None, **kwargs):
         data = [['' if pd.isna(v) else str(v) for v in row] for row in self.values]
