@@ -47,10 +47,19 @@ def unlift(seq: Iterable[str]) -> List[List[str]]:
     return rows
 
 
-def peel(rows):
-    it = iter(rows)
-    try:
-        meta_row = next(it)
-    except StopIteration:
-        raise ValueError("ENSV data must have at least a metadata row")
-    return unlift(meta_row), it
+def split(seqseq):
+    """Split a seqseq at the first empty row.
+
+    Returns (meta, offset, data) where meta is the rows before the
+    separator, offset is the index of the first data row, and data
+    is the rows after.  If no empty row exists, all rows are meta.
+    """
+    for i, row in enumerate(seqseq):
+        if not row:
+            return seqseq[:i], i + 1, seqseq[i + 1:]
+    return list(seqseq), len(seqseq), []
+
+
+def join(meta, data):
+    """Inverse of split. Concatenates meta + empty row + data."""
+    return list(meta) + [[]] + list(data)
