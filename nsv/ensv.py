@@ -49,40 +49,18 @@ def unlift(seq: Iterable[str]) -> List[List[str]]:
 
 class Reader:
     def __init__(self, file_obj):
-        self._file = file_obj
+        self._inner = NSVReader(file_obj)
         self.meta = []
-        self._read_meta()
-
-    def _read_meta(self):
-        row = []
-        for line in self._file:
-            if line == '\n':
-                if not row:
-                    break
-                self.meta.append(row)
-                row = []
-            else:
-                if line[-1] == '\n':
-                    line = line[:-1]
-                row.append(NSVReader.unescape(line))
-        else:
-            if row:
-                self.meta.append(row)
+        for row in self._inner:
+            if not row:
+                break
+            self.meta.append(row)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        acc = []
-        for line in self._file:
-            if line == '\n':
-                return acc
-            if line[-1] == '\n':
-                line = line[:-1]
-            acc.append(NSVReader.unescape(line))
-        if acc:
-            return acc
-        raise StopIteration
+        return next(self._inner)
 
 
 class Writer:
@@ -90,8 +68,7 @@ class Writer:
         self._inner = NSVWriter(file_obj)
 
     def write_meta(self, meta):
-        for row in meta:
-            self._inner.write_row(row)
+        self._inner.write_rows(meta)
         self._inner.write_row([])
 
     def write_row(self, row):
