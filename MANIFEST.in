@@ -1,3 +1,5 @@
 include README.md
 include LICENSE
 recursive-include nsv *.py
+include rust/Cargo.toml
+recursive-include rust/src *
