@@ -6,7 +6,10 @@ from test_utils import SAMPLES_DIR, SAMPLES_DATA, dump_then_load
 class TestEdgeCases(unittest.TestCase):
     def test_long_strings(self):
         """Test handling of long string values."""
-        long_string = ''.join(chr(x) for x in range(11, 0x110000))
+        # Skip surrogates (0xD800-0xDFFF): not valid UTF-8, not a use case for NSV.
+        long_string = ''.join(
+            chr(x) for x in range(11, 0x110000) if not (0xD800 <= x <= 0xDFFF)
+        )
         data = [
             ["normal", long_string],
             [long_string, "normal"]

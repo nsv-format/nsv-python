@@ -1,5 +1,11 @@
 from setuptools import setup, find_packages
 
+try:
+    from setuptools_rust import Binding, RustExtension
+    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=True)]
+except ImportError:
+    rust_extensions = []
+
 setup(
     name="nsv",
     version="0.2.2",
@@ -36,4 +42,7 @@ setup(
     extras_require={
         "pandas": ["pandas"],
     },
+    rust_extensions=rust_extensions,
+    setup_requires=["setuptools-rust>=1.0"] if rust_extensions else [],
+    zip_safe=False,
 )

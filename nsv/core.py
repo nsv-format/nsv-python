@@ -35,3 +35,11 @@ def dumps(data: Iterable[Iterable[str]]) -> str:
             lines.append(Writer.escape(cell))
         lines.append('')
     return ''.join(f'{line}\n' for line in lines)
+
+# Try to use fast Rust implementation if available
+try:
+    from ._rust import loads as _loads_rs, dumps as _dumps_rs
+    loads = _loads_rs
+    dumps = _dumps_rs
+except ImportError:
+    pass
