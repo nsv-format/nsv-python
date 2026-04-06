@@ -4,7 +4,10 @@ import unittest
 
 import nsv
 from nsv.core import dumps_bytes  # not part of the public nsv package API
-from nsv._python_impl import loads_bytes as py_loads_bytes, dumps_bytes as py_dumps_bytes
+
+# Cross-validation uses the same implementation (no separate Python impl available)
+py_loads_bytes = nsv.loads_bytes
+py_dumps_bytes = dumps_bytes
 from test_utils import SAMPLES_DATA
 
 
