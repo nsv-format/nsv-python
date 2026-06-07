@@ -8,17 +8,17 @@ except ImportError:
 
 setup(
     name="nsv",
-    version="0.2.2",
+    version="0.2.3",
     packages=find_packages(),
     description="Python implementation of the NSV (Newline-Separated Values) format",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="naming",
     author_email="",
-    url="https://github.com/namingbe/nsv-python",
+    url="https://github.com/nsv-format/nsv-python",
     project_urls={
-        "Bug Reports": "https://github.com/namingbe/nsv-python/issues",
-        "Source": "https://github.com/namingbe/nsv-python",
+        "Bug Reports": "https://github.com/nsv-format/nsv-python/issues",
+        "Source": "https://github.com/nsv-format/nsv-python",
     },
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -34,6 +34,8 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Operating System :: OS Independent",
     ],
     keywords="nsv csv data format parser",
