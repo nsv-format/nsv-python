@@ -5,7 +5,7 @@ from .writer import Writer
 
 def load(file_obj) -> List[List[str]]:
     """Load NSV data from a file-like object."""
-    return list(Reader(file_obj))
+    return loads(file_obj.read())
 
 def loads(s: str) -> List[List[str]]:
     """Load NSV data from a string."""
@@ -20,6 +20,10 @@ def loads(s: str) -> List[List[str]]:
                 data.append(row)
                 row = []
             start = pos + 1
+    if start < len(s):
+        row.append(Reader.unescape(s[start:]))
+    if row:
+        data.append(row)
     return data
 
 def dump(data: Iterable[Iterable[str]], file_obj):
