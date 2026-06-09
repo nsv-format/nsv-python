@@ -1,23 +1,29 @@
 class Reader:
     def __init__(self, file_obj):
         self._file_obj = file_obj
+        self._line_buffer = ''  # incomplete line at EOF, preserved for next call
+        self._row_buffer = []  # incomplete row at EOF, preserved for next call
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        acc = []
         for line in self._file_obj:
+            line = self._line_buffer + line
+            self._line_buffer = ''
+            if line[-1] != '\n':
+                # Incomplete line at EOF, preserve for next call
+                self._line_buffer = line
+                break
             if line == '\n':
-                return acc
-            if line[-1] == '\n':  # so as not to chop if missing newline at EOF
-                line = line[:-1]
-            acc.append(Reader.unescape(line))  # bruh
-        # at the end of the file
-        if acc:
-            return acc
-        else:  # an empty row would self-report in the cycle body
-            raise StopIteration
+                # Row complete, return
+                row = self._row_buffer
+                self._row_buffer = []
+                return row
+            # Cell complete, keep reading
+            self._row_buffer.append(Reader.unescape(line[:-1]))
+        # Incomplete row at EOF, preserve row_buffer for next call
+        raise StopIteration
 
     @staticmethod
     def unescape(s: str) -> str:

@@ -38,6 +38,8 @@ with open('output.nsv', 'w') as f:
     writer.write_row(['row2cell1', 'row2cell2', 'row2cell3'])
 ```
 
+At EOF, `Reader` raises `StopIteration` without emitting an incomplete trailing row (one not yet terminated by an empty line); the row stays buffered, so iteration resumes correctly if the file grows (e.g. tailing). The non-resumable `load`/`loads` treat EOF as the definitive end of data and do emit the incomplete tail.
+
 ## Vendor
 
 The core NSV format is frozen by-design.  

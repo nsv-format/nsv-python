@@ -1,4 +1,5 @@
 import unittest
+import io
 import os
 import tempfile
 import nsv
@@ -17,12 +18,48 @@ class TestIncrementalProcessing(unittest.TestCase):
             second = next(reader)
             self.assertEqual(second, ["d", "e", "f"])
 
-            # third = next(reader)
-            # self.assertEqual(third, ["last1", "last2"])
+            third = next(reader)
+            self.assertEqual(third, ["last1", "last2"])
 
             # Should be at end of the file
             with self.assertRaises(StopIteration):
                 next(reader)
+
+    def test_incomplete_trailing_row_buffered(self):
+        """A resumable Reader buffers an incomplete trailing row instead of emitting it."""
+        reader = nsv.Reader(io.StringIO('a\nb\n\nc\nd'))
+
+        self.assertEqual(next(reader), ['a', 'b'])
+        # The trailing row is not terminated by an empty line: buffer, don't emit
+        with self.assertRaises(StopIteration):
+            next(reader)
+        # Same for a cell-terminated but row-unterminated tail
+        reader = nsv.Reader(io.StringIO('a\nb\n\nc\nd\n'))
+        self.assertEqual(next(reader), ['a', 'b'])
+        with self.assertRaises(StopIteration):
+            next(reader)
+
+    def test_reading_resumes_after_eof(self):
+        """Reading continues across EOF once more data is appended (tailing)."""
+        with tempfile.TemporaryDirectory() as output_dir:
+            file_path = os.path.join(output_dir, 'tail.nsv')
+            with open(file_path, 'w') as f:
+                f.write('a\nb')
+                f.flush()
+
+                with open(file_path, 'r') as rf:
+                    reader = nsv.Reader(rf)
+                    with self.assertRaises(StopIteration):
+                        next(reader)
+
+                    # Complete the row, splitting a cell across the EOF boundary
+                    f.write('c\nd\n\n')
+                    f.flush()
+                    self.assertEqual(next(reader), ['a', 'bc', 'd'])
+
+    def test_load_emits_incomplete_trailing_row(self):
+        """Non-resumable loads keeps emitting the incomplete tail."""
+        self.assertEqual(nsv.loads('a\nb\n\nc\nd'), [['a', 'b'], ['c', 'd']])
 
     def test_incremental_writing(self):
         """Test writing elements incrementally."""
