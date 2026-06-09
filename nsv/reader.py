@@ -1,23 +1,26 @@
 class Reader:
     def __init__(self, file_obj):
         self._file_obj = file_obj
+        self._line_parts = []
+        self._row_buffer = []
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        acc = []
         for line in self._file_obj:
+            if line[-1] != '\n':  # missing newline = EOF mid-line
+                self._line_parts.append(line)
+                continue
+            if self._line_parts:
+                self._line_parts.append(line)
+                line = ''.join(self._line_parts)
+                self._line_parts = []
             if line == '\n':
-                return acc
-            if line[-1] == '\n':  # so as not to chop if missing newline at EOF
-                line = line[:-1]
-            acc.append(Reader.unescape(line))  # bruh
-        # at the end of the file
-        if acc:
-            return acc
-        else:  # an empty row would self-report in the cycle body
-            raise StopIteration
+                row, self._row_buffer = self._row_buffer, []
+                return row
+            self._row_buffer.append(Reader.unescape(line[:-1]))  # bruh
+        raise StopIteration
 
     @staticmethod
     def unescape(s: str) -> str:
