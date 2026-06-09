@@ -19,7 +19,7 @@ class Reader:
             if line == '\n':
                 row, self._row_buffer = self._row_buffer, []
                 return row
-            self._row_buffer.append(Reader.unescape(line[:-1]))
+            self._row_buffer.append(Reader.unescape(line[:-1]))  # bruh
         raise StopIteration
 
     @staticmethod
