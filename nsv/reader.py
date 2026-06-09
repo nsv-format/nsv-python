@@ -15,7 +15,7 @@ class Reader:
             if self._line_parts:
                 self._line_parts.append(line)
                 line = ''.join(self._line_parts)
-                self._line_parts.clear()
+                self._line_parts = []
             if line == '\n':
                 row, self._row_buffer = self._row_buffer, []
                 return row
