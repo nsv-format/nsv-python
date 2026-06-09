@@ -1,15 +1,15 @@
 class Reader:
     def __init__(self, file_obj):
         self._file_obj = file_obj
-        self._line_parts = []  # pieces of an incomplete line at EOF, joined once on completion
-        self._row_buffer = []  # incomplete row at EOF, preserved for next call
+        self._line_parts = []
+        self._row_buffer = []
 
     def __iter__(self):
         return self
 
     def __next__(self):
         for line in self._file_obj:
-            if line[-1] != '\n':  # only happens at EOF: incomplete line, keep the piece
+            if line[-1] != '\n':  # missing newline = EOF mid-line
                 self._line_parts.append(line)
                 continue
             if self._line_parts:
@@ -20,7 +20,6 @@ class Reader:
                 row, self._row_buffer = self._row_buffer, []
                 return row
             self._row_buffer.append(Reader.unescape(line[:-1]))
-        # at the end of the file; incomplete row and line stay buffered for resumption
         raise StopIteration
 
     @staticmethod

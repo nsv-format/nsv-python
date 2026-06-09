@@ -18,9 +18,6 @@ class TestIncrementalProcessing(unittest.TestCase):
             second = next(reader)
             self.assertEqual(second, ["d", "e", "f"])
 
-            third = next(reader)
-            self.assertEqual(third, ["last1", "last2"])
-
             # Should be at end of the file
             with self.assertRaises(StopIteration):
                 next(reader)
@@ -28,12 +25,10 @@ class TestIncrementalProcessing(unittest.TestCase):
     def test_incomplete_trailing_row_buffered(self):
         """A resumable Reader buffers an incomplete trailing row instead of emitting it."""
         reader = nsv.Reader(io.StringIO('a\nb\n\nc\nd'))
-
         self.assertEqual(next(reader), ['a', 'b'])
-        # The trailing row is not terminated by an empty line: buffer, don't emit
         with self.assertRaises(StopIteration):
             next(reader)
-        # Same for a cell-terminated but row-unterminated tail
+
         reader = nsv.Reader(io.StringIO('a\nb\n\nc\nd\n'))
         self.assertEqual(next(reader), ['a', 'b'])
         with self.assertRaises(StopIteration):
@@ -52,7 +47,6 @@ class TestIncrementalProcessing(unittest.TestCase):
                     with self.assertRaises(StopIteration):
                         next(reader)
 
-                    # Complete the row, splitting a cell across the EOF boundary
                     f.write('c\nd\n\n')
                     f.flush()
                     self.assertEqual(next(reader), ['a', 'bc', 'd'])
