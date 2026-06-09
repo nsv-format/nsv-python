@@ -1,7 +1,7 @@
 class Reader:
     def __init__(self, file_obj):
         self._file_obj = file_obj
-        self._line_buffer = ''  # incomplete line at EOF, preserved for next call
+        self._line_parts = []  # pieces of an incomplete line at EOF, joined once on completion
         self._row_buffer = []  # incomplete row at EOF, preserved for next call
 
     def __iter__(self):
@@ -9,16 +9,18 @@ class Reader:
 
     def __next__(self):
         for line in self._file_obj:
-            line = self._line_buffer + line
-            self._line_buffer = ''
+            if line[-1] != '\n':  # only happens at EOF: incomplete line, keep the piece
+                self._line_parts.append(line)
+                continue
+            if self._line_parts:
+                self._line_parts.append(line)
+                line = ''.join(self._line_parts)
+                self._line_parts.clear()
             if line == '\n':
                 row, self._row_buffer = self._row_buffer, []
                 return row
-            if line[-1] == '\n':
-                self._row_buffer.append(Reader.unescape(line[:-1]))
-            else:  # no trailing newline only happens at EOF: incomplete line, keep
-                self._line_buffer = line
-        # at the end of the file; incomplete row stays buffered for resumption
+            self._row_buffer.append(Reader.unescape(line[:-1]))
+        # at the end of the file; incomplete row and line stay buffered for resumption
         raise StopIteration
 
     @staticmethod
