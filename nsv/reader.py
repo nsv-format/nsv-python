@@ -11,18 +11,14 @@ class Reader:
         for line in self._file_obj:
             line = self._line_buffer + line
             self._line_buffer = ''
-            if line[-1] != '\n':
-                # Incomplete line at EOF, preserve for next call
-                self._line_buffer = line
-                break
             if line == '\n':
-                # Row complete, return
-                row = self._row_buffer
-                self._row_buffer = []
+                row, self._row_buffer = self._row_buffer, []
                 return row
-            # Cell complete, keep reading
-            self._row_buffer.append(Reader.unescape(line[:-1]))
-        # Incomplete row at EOF, preserve row_buffer for next call
+            if line[-1] == '\n':
+                self._row_buffer.append(Reader.unescape(line[:-1]))
+            else:  # no trailing newline only happens at EOF: incomplete line, keep
+                self._line_buffer = line
+        # at the end of the file; incomplete row stays buffered for resumption
         raise StopIteration
 
     @staticmethod
