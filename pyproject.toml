@@ -7,5 +7,6 @@ build = "cp312-*"
 environment = { NSV_BUILD_RUST = "1" }
 
 [tool.cibuildwheel.linux]
+archs = ["auto64"]
 before-all = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
 environment = { NSV_BUILD_RUST = "1", PATH = "$HOME/.cargo/bin:$PATH" }
