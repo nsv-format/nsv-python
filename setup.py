@@ -5,9 +5,12 @@ from setuptools import setup, find_packages
 build_rust = os.environ.get("NSV_BUILD_RUST", "0") == "1"
 if build_rust:
     from setuptools_rust import Binding, RustExtension
-    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=False)]
+    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=False, py_limited_api=True)]
+    # abi3-py38: one wheel per platform, loads on CPython 3.8+
+    options = {"bdist_wheel": {"py_limited_api": "cp38"}}
 else:
     rust_extensions = []
+    options = {}
 
 setup(
     name="nsv",
@@ -48,4 +51,5 @@ setup(
         "pandas": ["pandas"],
     },
     rust_extensions=rust_extensions,
+    options=options,
 )
