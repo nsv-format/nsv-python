@@ -2,12 +2,6 @@ import os
 
 from setuptools import setup, find_packages
 
-# Build the Rust extension only when explicitly requested. When unset, the build
-# is pure-Python and bdist_wheel emits an honest py3-none-any wheel; nsv.core
-# falls back to the Python implementation at import time. When set, a missing
-# toolchain or an incompatible PyO3/interpreter pairing fails the build loudly
-# (optional=False) instead of silently shipping a mistagged platform wheel with
-# no binary inside.
 build_rust = os.environ.get("NSV_BUILD_RUST", "0") == "1"
 if build_rust:
     from setuptools_rust import Binding, RustExtension
