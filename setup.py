@@ -13,7 +13,7 @@ else:
 
 setup(
     name="nsv",
-    version="0.2.3",
+    version="0.2.4",
     packages=find_packages(exclude=["tests", "tests.*"]),
     description="Python implementation of the NSV (Newline-Separated Values) format",
     long_description=open("README.md").read(),
