@@ -1,15 +1,24 @@
+import os
+
 from setuptools import setup, find_packages
 
-try:
+# Build the Rust extension only when explicitly requested. When unset, the build
+# is pure-Python and bdist_wheel emits an honest py3-none-any wheel; nsv.core
+# falls back to the Python implementation at import time. When set, a missing
+# toolchain or an incompatible PyO3/interpreter pairing fails the build loudly
+# (optional=False) instead of silently shipping a mistagged platform wheel with
+# no binary inside.
+build_rust = os.environ.get("NSV_BUILD_RUST", "0") == "1"
+if build_rust:
     from setuptools_rust import Binding, RustExtension
-    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=True)]
-except ImportError:
+    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=False)]
+else:
     rust_extensions = []
 
 setup(
     name="nsv",
     version="0.2.3",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     description="Python implementation of the NSV (Newline-Separated Values) format",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -45,6 +54,4 @@ setup(
         "pandas": ["pandas"],
     },
     rust_extensions=rust_extensions,
-    setup_requires=["setuptools-rust>=1.0"] if rust_extensions else [],
-    zip_safe=False,
 )
