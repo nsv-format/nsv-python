@@ -1,15 +1,20 @@
+import os
+
 from setuptools import setup, find_packages
 
-try:
+build_rust = os.environ.get("NSV_BUILD_RUST", "0") == "1"
+if build_rust:
     from setuptools_rust import Binding, RustExtension
-    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=True)]
-except ImportError:
+    rust_extensions = [RustExtension("nsv._rust", path="rust/Cargo.toml", binding=Binding.PyO3, optional=False, py_limited_api=True)]
+    options = {"bdist_wheel": {"py_limited_api": "cp38"}}
+else:
     rust_extensions = []
+    options = {}
 
 setup(
     name="nsv",
     version="0.2.3",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     description="Python implementation of the NSV (Newline-Separated Values) format",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -45,6 +50,5 @@ setup(
         "pandas": ["pandas"],
     },
     rust_extensions=rust_extensions,
-    setup_requires=["setuptools-rust>=1.0"] if rust_extensions else [],
-    zip_safe=False,
+    options=options,
 )
