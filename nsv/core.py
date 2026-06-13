@@ -11,17 +11,15 @@ def loads(s: str) -> List[List[str]]:
     """Load NSV data from a string."""
     data = []
     row = []
-    start = 0
-    for pos, c in enumerate(s):
-        if c == '\n':
-            if pos - start >= 1:
-                row.append(Reader.unescape(s[start:pos]))
-            else:
-                data.append(row)
-                row = []
-            start = pos + 1
-    if start < len(s):
-        row.append(Reader.unescape(s[start:]))
+    lines = s.split('\n')
+    if lines[-1] == '':
+        lines.pop()
+    for line in lines:
+        if line == '':
+            data.append(row)
+            row = []
+        else:
+            row.append(Reader.unescape(line))
     if row:
         data.append(row)
     return data
