@@ -25,17 +25,30 @@ pip install -e .
 ```python
 import nsv
 
+# Note that on a file lacking cell/row boundaries
+# at the end, load/loads will emit the incomplete row
 with open('input.nsv', 'r') as f:
-    # load/dump are non-resumable
-    reader = nsv.load(f)
-    for row in reader:
-        print(row)
+    data = nsv.load(f)  # -> List[List[str]]
 
 with open('output.nsv', 'w') as f:
-    # Reader/Writer are resumable, intended for streaming
-    writer = nsv.Writer(f)
-    writer.write_row(['row1cell1', 'row1cell2', 'row1cell3'])
-    writer.write_row(['row2cell1', 'row2cell2', 'row2cell3'])
+    nsv.dump(data, f)
+
+# Reader/Writer are resumable
+with (
+    open('stream.nsv', 'r') as fr,
+    open('stream.nsv', 'w', buffering=1) as fw,
+):
+    reader = nsv.Reader(fr)
+    writer = nsv.Writer(fw)
+    list(reader)  # []
+    writer.write_row(['a', 'b', 'c'])
+    list(reader)  # [['a', 'b', 'c']]
+    fw.write('incomple')
+    list(reader)  # []
+    fw.write('te\nrow\n\n')
+    list(reader)  # [['incomplete', 'row']]
+    # don't reuse the same file-like object like that
+    # outside of examples though
 ```
 
 ## Vendor
